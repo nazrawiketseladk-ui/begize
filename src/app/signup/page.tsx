@@ -24,7 +24,7 @@ export default function SignupPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
 
-  // Payment details state
+  // Payment details state - completely blank by default
   const [telebirrNumber, setTelebirrNumber] = useState('');
   const [bankName, setBankName] = useState('Commercial Bank of Ethiopia (CBE)');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -149,7 +149,7 @@ export default function SignupPage() {
                     className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
                     }`}
-                    placeholder="e.g. Ketsela Tadesse"
+                    placeholder="e.g. Abebe Kebede"
                     required
                   />
                 </div>
@@ -169,7 +169,7 @@ export default function SignupPage() {
                     className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
                     }`}
-                    placeholder="0911002233"
+                    placeholder="e.g. 0911002233"
                   />
                 </div>
               </div>
@@ -190,7 +190,7 @@ export default function SignupPage() {
                     className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
                     }`}
-                    placeholder="landlord@begize.app"
+                    placeholder="e.g. landlord@begize.app"
                     required
                   />
                 </div>
@@ -245,7 +245,7 @@ export default function SignupPage() {
                     className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
                     }`}
-                    placeholder="0911234567"
+                    placeholder="e.g. 0911234567"
                   />
                 </div>
               </div>
@@ -289,7 +289,7 @@ export default function SignupPage() {
                     className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
                     }`}
-                    placeholder="1000 4829 1048"
+                    placeholder="e.g. 1000 4829 1048"
                   />
                 </div>
               </div>
@@ -308,7 +308,7 @@ export default function SignupPage() {
                     className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
                     }`}
-                    placeholder={name || 'Account Holder Name'}
+                    placeholder={name || 'e.g. Abebe Kebede'}
                   />
                 </div>
               </div>

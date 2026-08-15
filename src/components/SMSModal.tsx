@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Send, Smartphone, Copy, Check, MessageSquare } from 'lucide-react';
-import { Room, PaymentSetting, SMSLog } from '../types';
+import { X, Copy, Check, MessageSquare } from 'lucide-react';
+import { Room, PaymentSetting } from '../types';
 
 interface SMSModalProps {
   room: Room | null;
   isOpen: boolean;
   onClose: () => void;
   paymentSettings: PaymentSetting;
-  onAddSMSLog: (log: SMSLog) => void;
+  onAddSMSLog?: (log: any) => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -18,12 +18,10 @@ export const SMSModal: React.FC<SMSModalProps> = ({
   isOpen,
   onClose,
   paymentSettings,
-  onAddSMSLog,
   onShowToast,
 }) => {
   const [customNote, setCustomNote] = useState('');
   const [includePaymentInfo, setIncludePaymentInfo] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen || !room) return null;
@@ -31,7 +29,7 @@ export const SMSModal: React.FC<SMSModalProps> = ({
   const formattedAmount = room.rentAmount.toLocaleString();
   const dueDateText = `Day ${room.dueDay}`;
 
-  // Payment destination string
+  // Payment destination string constructed from landlord's saved details
   let paymentDestText = '';
   if (includePaymentInfo && (paymentSettings.bankAccountNumber || paymentSettings.cbeAccount || paymentSettings.telebirrNumber)) {
     const parts: string[] = [];
@@ -49,82 +47,11 @@ export const SMSModal: React.FC<SMSModalProps> = ({
 
   const generatedMessage = `Hello ${room.tenantName}, your monthly rent for Room ${room.roomNumber} (${formattedAmount} ETB) is due on ${dueDateText}.${paymentDestText}${customNote ? `\nNote: ${customNote}` : ''}\nThank you!`;
 
-  // Native phone SMS launch (sms: URI)
-  const handleOpenNativeSMS = async () => {
-    const cleanPhone = room.phone.replace(/\s+/g, '');
-    const encodedBody = encodeURIComponent(generatedMessage);
-    const smsUrl = `sms:${cleanPhone}?body=${encodedBody}`;
-    
-    window.location.href = smsUrl;
-
-    const newLog: SMSLog = {
-      id: `sms-native-${Date.now()}`,
-      recipientName: room.tenantName,
-      roomNumber: room.roomNumber,
-      phone: room.phone,
-      message: generatedMessage,
-      sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'Delivered',
-      type: 'MANUAL_SMS',
-      language: 'en'
-    };
-    onAddSMSLog(newLog);
-    onShowToast('Mobile SMS app opened', 'info');
-    onClose();
-  };
-
-  // API server call (/api/sms)
-  const handleSendAPISMS = async () => {
-    setIsSending(true);
-    try {
-      const res = await fetch('/api/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipientPhone: room.phone,
-          recipientName: room.tenantName,
-          roomNumber: room.roomNumber,
-          amount: room.rentAmount,
-          dueDate: dueDateText,
-          cbeAccount: includePaymentInfo ? (paymentSettings.bankAccountNumber || paymentSettings.cbeAccount) : '',
-          telebirrNumber: includePaymentInfo ? paymentSettings.telebirrNumber : '',
-          customNote
-        })
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        onShowToast(`SMS sent successfully via SMSEthiopia gateway!`, 'success');
-        
-        const newLog: SMSLog = {
-          id: `sms-api-${Date.now()}`,
-          recipientName: room.tenantName,
-          roomNumber: room.roomNumber,
-          phone: room.phone,
-          message: generatedMessage,
-          sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'Delivered',
-          type: 'MANUAL_SMS',
-          language: 'en'
-        };
-        onAddSMSLog(newLog);
-        onClose();
-      } else {
-        throw new Error(data.error || 'Failed to send SMS');
-      }
-    } catch (err: any) {
-      onShowToast(`Error: ${err.message}`, 'error');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(generatedMessage);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    onShowToast('Message copied to clipboard', 'info');
+    onShowToast('SMS template copied to clipboard!', 'success');
   };
 
   return (
@@ -132,14 +59,14 @@ export const SMSModal: React.FC<SMSModalProps> = ({
       <div className="bg-slate-900 rounded-[28px] border border-white/15 w-full max-w-lg mx-auto my-auto max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
         
         {/* Header */}
-        <div className="p-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex items-center justify-between shrink-0">
+        <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-base">SMS Reminder</h3>
-              <p className="text-xs text-blue-100 font-medium">Room {room.roomNumber} - {room.tenantName}</p>
+              <h3 className="font-bold text-base">Automated SMS Template Preview</h3>
+              <p className="text-xs text-emerald-100 font-medium">Room {room.roomNumber} • {room.tenantName}</p>
             </div>
           </div>
           <button
@@ -152,10 +79,16 @@ export const SMSModal: React.FC<SMSModalProps> = ({
 
         <div className="p-5 space-y-4 flex-1 overflow-y-auto">
           
+          {/* Automation Info Alert */}
+          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span>SMS reminders for this room are dispatched automatically 24/7 via daily cloud cron schedule.</span>
+          </div>
+
           {/* Recipient summary */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 text-xs gap-2">
             <div>
-              <span className="text-slate-400 block">Recipient:</span>
+              <span className="text-slate-400 block">Tenant Recipient:</span>
               <strong className="text-white font-bold text-sm">{room.tenantName}</strong>
             </div>
             <div className="text-left sm:text-right font-mono text-emerald-400 font-semibold">
@@ -170,23 +103,23 @@ export const SMSModal: React.FC<SMSModalProps> = ({
               id="includePayment"
               checked={includePaymentInfo}
               onChange={(e) => setIncludePaymentInfo(e.target.checked)}
-              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-white/20 bg-slate-950"
+              className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 border-white/20 bg-slate-950"
             />
             <label htmlFor="includePayment" className="text-xs font-medium text-slate-300">
-              Include Bank & Telebirr payment details in SMS
+              Include landlord Bank & Telebirr payment instructions in template
             </label>
           </div>
 
           {/* Additional note */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Optional Note:
+              Optional Message Note:
             </label>
             <input
               type="text"
               value={customNote}
               onChange={(e) => setCustomNote(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-white/10 bg-slate-950 text-xs text-white"
+              className="w-full px-3 py-2 rounded-xl border border-white/10 bg-slate-950 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="e.g. Please send payment receipt after deposit..."
             />
           </div>
@@ -195,15 +128,15 @@ export const SMSModal: React.FC<SMSModalProps> = ({
           <div className="relative">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold text-slate-400">
-                Message Preview:
+                Live SMS Message Preview:
               </span>
               <button
                 type="button"
                 onClick={handleCopyMessage}
-                className="text-xs text-blue-400 hover:underline flex items-center gap-1 font-medium"
+                className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-bold"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'Copied!' : 'Copy Text'}</span>
+                <span>{copied ? 'Copied!' : 'Copy Template'}</span>
               </button>
             </div>
             <pre className="p-3.5 rounded-2xl bg-slate-950 text-slate-200 text-xs font-sans whitespace-pre-wrap border border-white/10 leading-relaxed shadow-inner">
@@ -211,30 +144,16 @@ export const SMSModal: React.FC<SMSModalProps> = ({
             </pre>
           </div>
 
-          {/* Action buttons */}
-          <div className="space-y-2 pt-2 border-t border-white/10">
-            
-            {/* Direct Mobile SMS Button (Free) */}
+          {/* Footer Action */}
+          <div className="pt-2 border-t border-white/10 flex justify-end gap-2">
             <button
               type="button"
-              onClick={handleOpenNativeSMS}
-              className="w-full py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all"
+              onClick={handleCopyMessage}
+              className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition-all"
             >
-              <Smartphone className="w-4 h-4" />
-              <span>Open in Phone Messages (Free)</span>
+              <Copy className="w-4 h-4" />
+              <span>{copied ? 'Template Copied!' : 'Copy Template Text'}</span>
             </button>
-
-            {/* API / Server Send Button */}
-            <button
-              type="button"
-              onClick={handleSendAPISMS}
-              disabled={isSending}
-              className="w-full py-2.5 px-4 rounded-2xl bg-white/10 text-white hover:bg-white/20 font-semibold text-xs flex items-center justify-center gap-2 border border-white/10 transition-colors disabled:opacity-50"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{isSending ? 'Sending via Gateway...' : 'Send via SMSEthiopia API'}</span>
-            </button>
-
           </div>
 
         </div>

@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 function formatEthiopianPhone(phone: string): string {
-  let cleaned = phone.replace(/[^\d]/g, '');
-  if (cleaned.startsWith('09')) {
-    cleaned = '251' + cleaned.substring(1);
-  } else if (cleaned.startsWith('07')) {
-    cleaned = '251' + cleaned.substring(1);
-  } else if (cleaned.startsWith('9') && cleaned.length === 9) {
-    cleaned = '251' + cleaned;
-  } else if (cleaned.startsWith('7') && cleaned.length === 9) {
-    cleaned = '251' + cleaned;
-  } else if (!cleaned.startsWith('251') && cleaned.length === 9) {
-    cleaned = '251' + cleaned;
+  let digits = phone.replace(/\D/g, '');
+  while (digits.startsWith('0')) {
+    digits = digits.substring(1);
   }
-  return cleaned;
+  if (digits.startsWith('251')) {
+    return digits;
+  }
+  return '251' + digits;
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getAuthenticatedUser(req);
     const body = await req.json();
     const {
       phone,
@@ -27,8 +24,11 @@ export async function POST(req: NextRequest) {
       roomNumber,
       amount,
       dueDate,
+      bankName,
+      bankAccountNumber,
       cbeAccount,
       telebirrNumber,
+      accountHolderName,
       customNote
     } = body;
 
@@ -43,23 +43,34 @@ export async function POST(req: NextRequest) {
 
     const formattedPhone = formatEthiopianPhone(targetPhone);
 
+    // Dynamic payment credentials lookup (user record or request body)
+    const activeTelebirr = telebirrNumber || user?.telebirrNumber;
+    const activeBankName = bankName || user?.bankName || 'Commercial Bank of Ethiopia (CBE)';
+    const activeBankAcc = bankAccountNumber || cbeAccount || user?.bankAccountNumber || user?.cbeAccount;
+    const activeHolder = accountHolderName || user?.accountHolderName || user?.name;
+
     // Build message text if not directly provided
     let finalMessageText = message;
     if (!finalMessageText) {
       const formattedAmount = Number(amount || 0).toLocaleString();
-      let paymentDestText = '';
-      if (cbeAccount || telebirrNumber) {
-        const parts: string[] = [];
-        if (cbeAccount) parts.push(`CBE Account: ${cbeAccount}`);
-        if (telebirrNumber) parts.push(`Telebirr: ${telebirrNumber}`);
-        paymentDestText = `\nPlease deposit to ${parts.join(' or ')}.`;
+      const parts: string[] = [];
+      if (activeTelebirr) {
+        parts.push(`Telebirr: ${activeTelebirr}`);
       }
+      if (activeBankAcc) {
+        parts.push(`${activeBankName}: ${activeBankAcc}${activeHolder ? ` (${activeHolder})` : ''}`);
+      }
+
+      const paymentDestText = parts.length > 0
+        ? `\nክፍያ በ ${parts.join(' ወይም ')} መላክ ይችላሉ።`
+        : '';
+
       finalMessageText = `Hello ${recipientName || 'Tenant'}, your monthly rent for Room ${roomNumber || ''} (${formattedAmount} ETB) is due on ${dueDate || 'soon'}.${paymentDestText}${customNote ? `\nNote: ${customNote}` : ''}\nThank you!`;
     }
 
     const apiKey = process.env.SMSETHIOPIA_API_KEY || "9B81U5OBMJ8O8H5Z5U4FHCBYU25BX7TABQEK33I1";
 
-    console.log(`[SMSETHIOPIA API] Sending SMS to ${formattedPhone}...`);
+    console.log(`[SMSETHIOPIA API] Dispatching SMS to ${formattedPhone}...`);
 
     const response = await fetch('https://smsethiopia.com/api/sms/send', {
       method: 'POST',
@@ -87,7 +98,6 @@ export async function POST(req: NextRequest) {
       });
     } else {
       console.warn('[SMSETHIOPIA API Warning/Response]:', data);
-      // Return response status with error detail or fallback message
       return NextResponse.json({
         success: true,
         mode: 'live',
