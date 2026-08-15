@@ -40,7 +40,7 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       } else {
-        setError(data.error || 'Invalid email or password');
+        setError(data.error || 'Invalid emaill or password');
       }
     } catch (err: any) {
       setError('An error occurred. Please check your credentials and try again.');
