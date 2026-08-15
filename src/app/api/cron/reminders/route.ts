@@ -3,15 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { getAuthenticatedUser } from '@/lib/auth';
 
 function formatEthiopianPhone(phone: string): string {
-  let cleaned = phone.replace(/[^\d]/g, '');
-  if (cleaned.startsWith('09') || cleaned.startsWith('07')) {
-    cleaned = '251' + cleaned.substring(1);
-  } else if ((cleaned.startsWith('9') || cleaned.startsWith('7')) && cleaned.length === 9) {
-    cleaned = '251' + cleaned;
-  } else if (!cleaned.startsWith('251') && cleaned.length === 9) {
-    cleaned = '251' + cleaned;
+  let digits = phone.replace(/\D/g, '');
+  while (digits.startsWith('0')) {
+    digits = digits.substring(1);
   }
-  return cleaned;
+  if (digits.startsWith('251')) {
+    return digits;
+  }
+  return '251' + digits;
 }
 
 async function sendSMSEthiopiaGateway(phone: string, text: string) {
@@ -28,9 +27,9 @@ async function sendSMSEthiopiaGateway(phone: string, text: string) {
       body: JSON.stringify({ msisdn, text })
     });
     const data = await res.json().catch(() => ({}));
-    return { success: res.ok, response: data };
+    return { success: res.ok, status: res.status, msisdn, response: data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, msisdn };
   }
 }
 
@@ -85,7 +84,8 @@ async function handleCronProcess(req: NextRequest, body: any) {
         message: 'Automated SMS triggers are currently disabled in Settings.',
         tenantSmsSent: 0,
         landlordAlertsSent: 0,
-        logsCreated: 0
+        logsCreated: 0,
+        evaluatedTenants: []
       });
     }
 
@@ -108,15 +108,41 @@ async function handleCronProcess(req: NextRequest, body: any) {
     let landlordAlertsSent = 0;
     let logsCreated = 0;
 
-    for (const tenant of tenants) {
-      if (tenant.status === 'paid') continue;
+    const evaluatedTenants: Array<{
+      id: string;
+      name: string;
+      roomNumber: string;
+      dueDay: number;
+      status: string;
+      matchedRule: 'UPCOMING_3_DAYS' | 'DUE_TODAY' | 'OVERDUE' | 'PAID_NO_ACTION' | 'NONE';
+      smsAttempted: boolean;
+      apiResponse?: any;
+    }> = [];
 
+    for (const tenant of tenants) {
       const dueDay = tenant.dueDay;
       const amountStr = tenant.rentAmount.toLocaleString();
 
-      // CASE A: 3 Days Before Due Date (Advance Notice)
-      if (dueDay - currentDay === 3 || (dueDay - currentDay === -27)) {
-        // Check duplicate today
+      if (tenant.status === 'paid') {
+        evaluatedTenants.push({
+          id: tenant.id,
+          name: tenant.tenantName,
+          roomNumber: tenant.roomNumber,
+          dueDay: tenant.dueDay,
+          status: tenant.status,
+          matchedRule: 'PAID_NO_ACTION',
+          smsAttempted: false
+        });
+        continue;
+      }
+
+      // Rule Evaluation
+      const isUpcoming3Days = (dueDay - currentDay === 3) || (dueDay - currentDay === -27);
+      const isDueToday = (dueDay === currentDay);
+      const isOverdue = (currentDay > dueDay);
+
+      // CASE A: 3 Days Before Due Date (Upcoming)
+      if (isUpcoming3Days) {
         const existingLog = await prisma.sMSLog.findFirst({
           where: {
             userId: user.id,
@@ -126,10 +152,14 @@ async function handleCronProcess(req: NextRequest, body: any) {
           }
         });
 
+        let smsAttempted = false;
+        let apiResponse = null;
+
         if (!existingLog || body?.isManualTest) {
+          smsAttempted = true;
           const tenantMsg = `Hello ${tenant.tenantName}, your monthly rent for Room ${tenant.roomNumber} (${amountStr} ETB) is due in 3 days (Day ${dueDay}).${paymentString}\nThank you!`;
           
-          await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
+          apiResponse = await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
 
           await prisma.sMSLog.create({
             data: {
@@ -138,7 +168,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
               roomNumber: tenant.roomNumber,
               phone: tenant.phone,
               message: tenantMsg,
-              status: 'Delivered',
+              status: apiResponse.success ? 'Delivered' : 'Failed',
               type: 'ADVANCE_NOTICE',
               sentAt: timeString
             }
@@ -146,11 +176,21 @@ async function handleCronProcess(req: NextRequest, body: any) {
           tenantSmsSent++;
           logsCreated++;
         }
+
+        evaluatedTenants.push({
+          id: tenant.id,
+          name: tenant.tenantName,
+          roomNumber: tenant.roomNumber,
+          dueDay: tenant.dueDay,
+          status: tenant.status,
+          matchedRule: 'UPCOMING_3_DAYS',
+          smsAttempted,
+          apiResponse
+        });
       }
 
-      // CASE B: Exact Due Date Today
-      else if (dueDay === currentDay) {
-        // Check duplicate today
+      // CASE B: ON Due Date (Due Today)
+      else if (isDueToday) {
         const existingTenantLog = await prisma.sMSLog.findFirst({
           where: {
             userId: user.id,
@@ -160,10 +200,14 @@ async function handleCronProcess(req: NextRequest, body: any) {
           }
         });
 
+        let smsAttempted = false;
+        let apiResponse = null;
+
         if (!existingTenantLog || body?.isManualTest) {
+          smsAttempted = true;
           const tenantMsg = `Hello ${tenant.tenantName}, your monthly rent for Room ${tenant.roomNumber} (${amountStr} ETB) is due today (Day ${dueDay}).${paymentString}\nPlease complete your payment. Thank you!`;
 
-          await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
+          apiResponse = await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
 
           await prisma.sMSLog.create({
             data: {
@@ -172,7 +216,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
               roomNumber: tenant.roomNumber,
               phone: tenant.phone,
               message: tenantMsg,
-              status: 'Delivered',
+              status: apiResponse.success ? 'Delivered' : 'Failed',
               type: 'DUE_DATE_REMINDER',
               sentAt: timeString
             }
@@ -203,11 +247,22 @@ async function handleCronProcess(req: NextRequest, body: any) {
             logsCreated++;
           }
         }
+
+        evaluatedTenants.push({
+          id: tenant.id,
+          name: tenant.tenantName,
+          roomNumber: tenant.roomNumber,
+          dueDay: tenant.dueDay,
+          status: tenant.status,
+          matchedRule: 'DUE_TODAY',
+          smsAttempted,
+          apiResponse
+        });
       }
 
-      // CASE C: Overdue (Past Due Date)
-      else if (currentDay > dueDay) {
-        // Update database status to overdue
+      // CASE C: 1+ Days After Due Date (Overdue)
+      else if (isOverdue) {
+        // Update database status to overdue if not already set
         if (tenant.status !== 'overdue') {
           await prisma.tenant.update({
             where: { id: tenant.id },
@@ -217,7 +272,6 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
         const daysOverdue = currentDay - dueDay;
 
-        // Check duplicate today
         const existingOverdueLog = await prisma.sMSLog.findFirst({
           where: {
             userId: user.id,
@@ -227,12 +281,16 @@ async function handleCronProcess(req: NextRequest, body: any) {
           }
         });
 
+        let smsAttempted = false;
+        let apiResponse = null;
+
         if (!existingOverdueLog || body?.isManualTest) {
+          smsAttempted = true;
           const landlordTargetPhone = user.landlordPhone || user.phone;
           if (landlordTargetPhone) {
             const landlordMsg = `[ALERT] Room ${tenant.roomNumber} (${tenant.tenantName}) rent is ${daysOverdue} days overdue! (Due: Day ${dueDay}) Amount: ${amountStr} ETB.`;
 
-            await sendSMSEthiopiaGateway(landlordTargetPhone, landlordMsg);
+            apiResponse = await sendSMSEthiopiaGateway(landlordTargetPhone, landlordMsg);
 
             await prisma.sMSLog.create({
               data: {
@@ -241,7 +299,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
                 roomNumber: tenant.roomNumber,
                 phone: landlordTargetPhone,
                 message: landlordMsg,
-                status: 'Delivered',
+                status: apiResponse.success ? 'Delivered' : 'Failed',
                 type: 'OVERDUE_ALERT',
                 sentAt: timeString
               }
@@ -250,6 +308,27 @@ async function handleCronProcess(req: NextRequest, body: any) {
             logsCreated++;
           }
         }
+
+        evaluatedTenants.push({
+          id: tenant.id,
+          name: tenant.tenantName,
+          roomNumber: tenant.roomNumber,
+          dueDay: tenant.dueDay,
+          status: 'overdue',
+          matchedRule: 'OVERDUE',
+          smsAttempted,
+          apiResponse
+        });
+      } else {
+        evaluatedTenants.push({
+          id: tenant.id,
+          name: tenant.tenantName,
+          roomNumber: tenant.roomNumber,
+          dueDay: tenant.dueDay,
+          status: tenant.status,
+          matchedRule: 'NONE',
+          smsAttempted: false
+        });
       }
     }
 
@@ -262,6 +341,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
       tenantSmsSent,
       landlordAlertsSent,
       logsCreated,
+      evaluatedTenants,
       executedAt: new Date().toISOString()
     });
 
