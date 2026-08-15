@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedUser } from '@/lib/auth';
 
 function formatEthiopianPhone(phone: string): string {
   let digits = phone.replace(/\D/g, '');
@@ -49,60 +48,22 @@ export async function POST(req: NextRequest) {
 
 async function handleCronProcess(req: NextRequest, body: any) {
   try {
-    let user = await getAuthenticatedUser(req);
-
-    // Fallback if triggered via cron without auth cookie: pick default user
-    if (!user) {
-      user = await prisma.user.findFirst({
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          cbeAccount: true,
-          telebirrNumber: true,
-          landlordPhone: true,
-          preferredAlertTime: true,
-          autoSmsEnabled: true,
-          createdAt: true
-        }
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: 'No user found for automation' }, { status: 404 });
-    }
-
     const searchParams = req.nextUrl.searchParams;
     const overrideDay = searchParams.get('day') || body?.overrideDay;
     const now = new Date();
     const currentDay = overrideDay ? Number(overrideDay) : now.getDate();
-
-    if (!user.autoSmsEnabled && !body?.isManualTest) {
-      return NextResponse.json({
-        success: false,
-        message: 'Automated SMS triggers are currently disabled in Settings.',
-        tenantSmsSent: 0,
-        landlordAlertsSent: 0,
-        logsCreated: 0,
-        evaluatedTenants: []
-      });
-    }
-
-    const tenants = await prisma.tenant.findMany({
-      where: { userId: user.id }
-    });
-
-    const paymentParts: string[] = [];
-    if (user.cbeAccount) paymentParts.push(`CBE Account: ${user.cbeAccount}`);
-    if (user.telebirrNumber) paymentParts.push(`Telebirr: ${user.telebirrNumber}`);
-    const paymentString = paymentParts.length > 0 ? `\nPlease deposit to ${paymentParts.join(' or ')}.` : '';
-
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
+
     // Start of today for duplicate check
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
+
+    // Fetch ALL tenants across ALL registered landlords
+    const tenants = await prisma.tenant.findMany({
+      include: {
+        user: true
+      }
+    });
 
     let tenantSmsSent = 0;
     let landlordAlertsSent = 0;
@@ -110,23 +71,46 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
     const evaluatedTenants: Array<{
       id: string;
-      name: string;
+      tenantName: string;
+      landlordName: string;
+      landlordEmail: string;
       roomNumber: string;
       dueDay: number;
       status: string;
-      matchedRule: 'UPCOMING_3_DAYS' | 'DUE_TODAY' | 'OVERDUE' | 'PAID_NO_ACTION' | 'NONE';
+      matchedRule: 'UPCOMING_3_DAYS' | 'DUE_TODAY' | 'OVERDUE' | 'PAID_NO_ACTION' | 'DISABLED_AUTO_SMS' | 'NONE';
       smsAttempted: boolean;
       apiResponse?: any;
     }> = [];
 
     for (const tenant of tenants) {
+      const landlord = tenant.user;
+      if (!landlord) continue;
+
       const dueDay = tenant.dueDay;
       const amountStr = tenant.rentAmount.toLocaleString();
+
+      // Skip auto SMS if landlord has disabled it (unless manual test override)
+      if (!landlord.autoSmsEnabled && !body?.isManualTest) {
+        evaluatedTenants.push({
+          id: tenant.id,
+          tenantName: tenant.tenantName,
+          landlordName: landlord.name,
+          landlordEmail: landlord.email,
+          roomNumber: tenant.roomNumber,
+          dueDay: tenant.dueDay,
+          status: tenant.status,
+          matchedRule: 'DISABLED_AUTO_SMS',
+          smsAttempted: false
+        });
+        continue;
+      }
 
       if (tenant.status === 'paid') {
         evaluatedTenants.push({
           id: tenant.id,
-          name: tenant.tenantName,
+          tenantName: tenant.tenantName,
+          landlordName: landlord.name,
+          landlordEmail: landlord.email,
           roomNumber: tenant.roomNumber,
           dueDay: tenant.dueDay,
           status: tenant.status,
@@ -135,6 +119,12 @@ async function handleCronProcess(req: NextRequest, body: any) {
         });
         continue;
       }
+
+      // Build landlord payment details string
+      const paymentParts: string[] = [];
+      if (landlord.cbeAccount) paymentParts.push(`CBE Account: ${landlord.cbeAccount}`);
+      if (landlord.telebirrNumber) paymentParts.push(`Telebirr: ${landlord.telebirrNumber}`);
+      const paymentString = paymentParts.length > 0 ? `\nPlease deposit to ${paymentParts.join(' or ')}.` : '';
 
       // Rule Evaluation
       const isUpcoming3Days = (dueDay - currentDay === 3) || (dueDay - currentDay === -27);
@@ -145,7 +135,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
       if (isUpcoming3Days) {
         const existingLog = await prisma.sMSLog.findFirst({
           where: {
-            userId: user.id,
+            userId: landlord.id,
             roomNumber: tenant.roomNumber,
             type: 'ADVANCE_NOTICE',
             createdAt: { gte: startOfToday }
@@ -163,7 +153,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
           await prisma.sMSLog.create({
             data: {
-              userId: user.id,
+              userId: landlord.id,
               recipientName: tenant.tenantName,
               roomNumber: tenant.roomNumber,
               phone: tenant.phone,
@@ -179,7 +169,9 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
         evaluatedTenants.push({
           id: tenant.id,
-          name: tenant.tenantName,
+          tenantName: tenant.tenantName,
+          landlordName: landlord.name,
+          landlordEmail: landlord.email,
           roomNumber: tenant.roomNumber,
           dueDay: tenant.dueDay,
           status: tenant.status,
@@ -193,7 +185,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
       else if (isDueToday) {
         const existingTenantLog = await prisma.sMSLog.findFirst({
           where: {
-            userId: user.id,
+            userId: landlord.id,
             roomNumber: tenant.roomNumber,
             type: 'DUE_DATE_REMINDER',
             createdAt: { gte: startOfToday }
@@ -211,7 +203,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
           await prisma.sMSLog.create({
             data: {
-              userId: user.id,
+              userId: landlord.id,
               recipientName: tenant.tenantName,
               roomNumber: tenant.roomNumber,
               phone: tenant.phone,
@@ -225,7 +217,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
           logsCreated++;
 
           // Alert Landlord
-          const landlordTargetPhone = user.landlordPhone || user.phone;
+          const landlordTargetPhone = landlord.landlordPhone || landlord.phone;
           if (landlordTargetPhone) {
             const landlordMsg = `[NOTICE] Room ${tenant.roomNumber} (${tenant.tenantName}) rent is due today (Day ${dueDay}). Amount: ${amountStr} ETB.`;
 
@@ -233,8 +225,8 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
             await prisma.sMSLog.create({
               data: {
-                userId: user.id,
-                recipientName: `Landlord (${user.name})`,
+                userId: landlord.id,
+                recipientName: `Landlord (${landlord.name})`,
                 roomNumber: tenant.roomNumber,
                 phone: landlordTargetPhone,
                 message: landlordMsg,
@@ -250,7 +242,9 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
         evaluatedTenants.push({
           id: tenant.id,
-          name: tenant.tenantName,
+          tenantName: tenant.tenantName,
+          landlordName: landlord.name,
+          landlordEmail: landlord.email,
           roomNumber: tenant.roomNumber,
           dueDay: tenant.dueDay,
           status: tenant.status,
@@ -274,7 +268,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
         const existingOverdueLog = await prisma.sMSLog.findFirst({
           where: {
-            userId: user.id,
+            userId: landlord.id,
             roomNumber: tenant.roomNumber,
             type: 'OVERDUE_ALERT',
             createdAt: { gte: startOfToday }
@@ -286,7 +280,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
         if (!existingOverdueLog || body?.isManualTest) {
           smsAttempted = true;
-          const landlordTargetPhone = user.landlordPhone || user.phone;
+          const landlordTargetPhone = landlord.landlordPhone || landlord.phone;
           if (landlordTargetPhone) {
             const landlordMsg = `[ALERT] Room ${tenant.roomNumber} (${tenant.tenantName}) rent is ${daysOverdue} days overdue! (Due: Day ${dueDay}) Amount: ${amountStr} ETB.`;
 
@@ -294,8 +288,8 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
             await prisma.sMSLog.create({
               data: {
-                userId: user.id,
-                recipientName: `Landlord (${user.name})`,
+                userId: landlord.id,
+                recipientName: `Landlord (${landlord.name})`,
                 roomNumber: tenant.roomNumber,
                 phone: landlordTargetPhone,
                 message: landlordMsg,
@@ -311,7 +305,9 @@ async function handleCronProcess(req: NextRequest, body: any) {
 
         evaluatedTenants.push({
           id: tenant.id,
-          name: tenant.tenantName,
+          tenantName: tenant.tenantName,
+          landlordName: landlord.name,
+          landlordEmail: landlord.email,
           roomNumber: tenant.roomNumber,
           dueDay: tenant.dueDay,
           status: 'overdue',
@@ -322,7 +318,9 @@ async function handleCronProcess(req: NextRequest, body: any) {
       } else {
         evaluatedTenants.push({
           id: tenant.id,
-          name: tenant.tenantName,
+          tenantName: tenant.tenantName,
+          landlordName: landlord.name,
+          landlordEmail: landlord.email,
           roomNumber: tenant.roomNumber,
           dueDay: tenant.dueDay,
           status: tenant.status,
