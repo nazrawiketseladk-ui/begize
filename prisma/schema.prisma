@@ -1,0 +1,78 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String
+  name               String
+  phone              String?
+  cbeAccount         String?  @default("1000 4829 1048")
+  telebirrNumber     String?  @default("+251 91 123 4567")
+  landlordPhone      String?  @default("+251 91 100 2233")
+  preferredAlertTime String?  @default("09:00")
+  autoSmsEnabled     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenants            Tenant[]
+  bills              Bill[]
+  smsLogs            SMSLog[]
+}
+
+model Tenant {
+  id           String   @id @default(uuid())
+  userId       String
+  roomNumber   String
+  tenantName   String
+  phone        String
+  rentAmount   Float
+  dueDay       Int
+  status       String   @default("due-soon")
+  lastPaidDate String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Bill {
+  id            String   @id @default(uuid())
+  userId        String
+  title         String
+  category      String
+  accountNumber String
+  amount        Float
+  dueDay        Int
+  isPaid        Boolean  @default(false)
+  provider      String?
+  lastPaidDate  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SMSLog {
+  id            String   @id @default(uuid())
+  userId        String
+  recipientName String
+  roomNumber    String
+  phone         String
+  message       String
+  status        String   @default("Delivered")
+  type          String   @default("MANUAL_SMS")
+  language      String   @default("en")
+  sentAt        String
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Light theme canvas default */
+  body {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    @apply bg-[#EDF2F2] text-zinc-900 transition-colors duration-300 antialiased min-h-screen selection:bg-emerald-500/20 selection:text-emerald-900 overflow-x-hidden;
+  }
+
+  /* Dark theme canvas */
+  html.dark body {
+    @apply bg-[#090D10] text-zinc-100 selection:bg-emerald-500/30 selection:text-emerald-200;
+  }
+}
+
+/* Dynamic Card Panels for Dual Theme */
+.fintech-card {
+  @apply bg-white border border-black/[0.06] text-zinc-900 rounded-[28px] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all duration-300;
+}
+
+html.dark .fintech-card {
+  @apply bg-zinc-900/[0.45] border-white/10 text-zinc-100 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-2xl;
+}
+
+/* Glass Emerald Card */
+.glass-card-emerald {
+  background: linear-gradient(135deg, #0D7B50 0%, #059669 50%, #047857 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 12px 36px 0 rgba(13, 123, 80, 0.25);
+}
+
+html.dark .glass-card-emerald {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.85) 0%, rgba(13, 148, 136, 0.9) 50%, rgba(15, 118, 110, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 12px 40px 0 rgba(16, 185, 129, 0.25), inset 0 1px 2px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Specular line */
+.specular-line {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+  height: 1px;
+}
+
+html:not(.dark) .specular-line {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.06) 50%, transparent 100%);
+}
+
+/* Glow effects */
+.glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(13, 123, 80, 0.4);
+}
+
+html.dark .glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.5);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 123, 80, 0.4);
+}
