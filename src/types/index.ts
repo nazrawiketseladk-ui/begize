@@ -29,6 +29,8 @@ export interface Bill {
 export interface PaymentSetting {
   cbeAccount: string;
   telebirrNumber: string;
+  bankName?: string;
+  bankAccountNumber?: string;
   accountHolderName: string;
   landlordPhone: string;
   preferredAlertTime: string;

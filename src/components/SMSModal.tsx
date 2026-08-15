@@ -33,11 +33,18 @@ export const SMSModal: React.FC<SMSModalProps> = ({
 
   // Payment destination string
   let paymentDestText = '';
-  if (includePaymentInfo && (paymentSettings.cbeAccount || paymentSettings.telebirrNumber)) {
+  if (includePaymentInfo && (paymentSettings.bankAccountNumber || paymentSettings.cbeAccount || paymentSettings.telebirrNumber)) {
     const parts: string[] = [];
-    if (paymentSettings.cbeAccount) parts.push(`CBE Account: ${paymentSettings.cbeAccount}`);
-    if (paymentSettings.telebirrNumber) parts.push(`Telebirr: ${paymentSettings.telebirrNumber}`);
-    paymentDestText = `\nPlease deposit to ${parts.join(' or ')}.`;
+    if (paymentSettings.telebirrNumber) {
+      parts.push(`Telebirr: ${paymentSettings.telebirrNumber}`);
+    }
+    const bankName = paymentSettings.bankName || 'CBE';
+    const bankAcc = paymentSettings.bankAccountNumber || paymentSettings.cbeAccount;
+    const holder = paymentSettings.accountHolderName;
+    if (bankAcc) {
+      parts.push(`${bankName}: ${bankAcc}${holder ? ` (${holder})` : ''}`);
+    }
+    paymentDestText = `\nክፍያ በ ${parts.join(' ወይም ')} መላክ ይችላሉ።`;
   }
 
   const generatedMessage = `Hello ${room.tenantName}, your monthly rent for Room ${room.roomNumber} (${formattedAmount} ETB) is due on ${dueDateText}.${paymentDestText}${customNote ? `\nNote: ${customNote}` : ''}\nThank you!`;
@@ -79,7 +86,7 @@ export const SMSModal: React.FC<SMSModalProps> = ({
           roomNumber: room.roomNumber,
           amount: room.rentAmount,
           dueDate: dueDateText,
-          cbeAccount: includePaymentInfo ? paymentSettings.cbeAccount : '',
+          cbeAccount: includePaymentInfo ? (paymentSettings.bankAccountNumber || paymentSettings.cbeAccount) : '',
           telebirrNumber: includePaymentInfo ? paymentSettings.telebirrNumber : '',
           customNote
         })
@@ -166,7 +173,7 @@ export const SMSModal: React.FC<SMSModalProps> = ({
               className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-white/20 bg-slate-950"
             />
             <label htmlFor="includePayment" className="text-xs font-medium text-slate-300">
-              Include CBE & Telebirr payment details in SMS
+              Include Bank & Telebirr payment details in SMS
             </label>
           </div>
 

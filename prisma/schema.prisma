@@ -14,9 +14,12 @@ model User {
   passwordHash       String
   name               String
   phone              String?
-  cbeAccount         String?  @default("1000 4829 1048")
-  telebirrNumber     String?  @default("+251 91 123 4567")
-  landlordPhone      String?  @default("+251 91 100 2233")
+  cbeAccount         String?
+  telebirrNumber     String?
+  bankName           String?  @default("Commercial Bank of Ethiopia (CBE)")
+  bankAccountNumber String?
+  accountHolderName String?
+  landlordPhone      String?
   preferredAlertTime String?  @default("09:00")
   autoSmsEnabled     Boolean  @default(true)
   createdAt          DateTime @default(now())

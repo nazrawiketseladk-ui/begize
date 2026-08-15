@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building, Smartphone, User, Play, Clock, Phone, Bell } from 'lucide-react';
+import { X, Save, Building, Smartphone, User, Play, Clock, Phone, Bell, CreditCard } from 'lucide-react';
 import { PaymentSetting } from '../types';
 
 interface PaymentSettingsModalProps {
@@ -13,6 +13,17 @@ interface PaymentSettingsModalProps {
   isTestingAutomation?: boolean;
 }
 
+const BANK_OPTIONS = [
+  'Commercial Bank of Ethiopia (CBE)',
+  'Bank of Abyssinia',
+  'Awash Bank',
+  'Dashen Bank',
+  'Berhan Bank',
+  'Nib Bank',
+  'Cooperative Bank of Oromia',
+  'Other'
+];
+
 export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
   settings,
   isOpen,
@@ -21,8 +32,9 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
   onRunTestAutomation,
   isTestingAutomation = false,
 }) => {
-  const [cbeAccount, setCbeAccount] = useState('');
   const [telebirrNumber, setTelebirrNumber] = useState('');
+  const [bankName, setBankName] = useState('Commercial Bank of Ethiopia (CBE)');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [landlordPhone, setLandlordPhone] = useState('');
   const [preferredAlertTime, setPreferredAlertTime] = useState('09:00');
@@ -30,8 +42,9 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
 
   useEffect(() => {
     if (settings) {
-      setCbeAccount(settings.cbeAccount || '');
       setTelebirrNumber(settings.telebirrNumber || '');
+      setBankName(settings.bankName || 'Commercial Bank of Ethiopia (CBE)');
+      setBankAccountNumber(settings.bankAccountNumber || settings.cbeAccount || '');
       setAccountHolderName(settings.accountHolderName || '');
       setLandlordPhone(settings.landlordPhone || '');
       setPreferredAlertTime(settings.preferredAlertTime || '09:00');
@@ -44,8 +57,10 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
-      cbeAccount: cbeAccount.trim(),
+      cbeAccount: bankAccountNumber.trim(),
       telebirrNumber: telebirrNumber.trim(),
+      bankName: bankName.trim(),
+      bankAccountNumber: bankAccountNumber.trim(),
       accountHolderName: accountHolderName.trim(),
       landlordPhone: landlordPhone.trim(),
       preferredAlertTime,
@@ -61,8 +76,8 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between shrink-0">
           <div>
-            <h3 className="font-bold text-base">Payment & Automation Settings</h3>
-            <p className="text-xs text-emerald-100 font-medium">Configure landlord details & SMS triggers</p>
+            <h3 className="font-bold text-base">Payment & Profile Settings</h3>
+            <p className="text-xs text-emerald-100 font-medium">Configure landlord payment accounts & automated SMS triggers</p>
           </div>
           <button
             onClick={onClose}
@@ -75,11 +90,11 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 flex-1 overflow-y-auto">
           
-          {/* Account Holder Name */}
+          {/* Landlord Full / Account Holder Name */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Landlord Full Name</span>
+              <span>Account Holder Name</span>
             </label>
             <input
               type="text"
@@ -91,22 +106,8 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
             />
           </div>
 
-          {/* CBE Account & Telebirr */}
+          {/* Telebirr & Bank Name Dropdown */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-purple-400" />
-                <span>CBE Account Number</span>
-              </label>
-              <input
-                type="text"
-                value={cbeAccount}
-                onChange={(e) => setCbeAccount(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-white/10 bg-slate-950 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-mono"
-                placeholder="1000 4829 1048"
-              />
-            </div>
-
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
                 <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
@@ -117,9 +118,42 @@ export const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({
                 value={telebirrNumber}
                 onChange={(e) => setTelebirrNumber(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-white/10 bg-slate-950 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-mono"
-                placeholder="+251 91 123 4567"
+                placeholder="0911234567"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-purple-400" />
+                <span>Primary Bank</span>
+              </label>
+              <select
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-white/10 bg-slate-950 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold"
+              >
+                {BANK_OPTIONS.map((bank) => (
+                  <option key={bank} value={bank} className="bg-slate-900 text-white">
+                    {bank}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Bank Account Number */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Bank Account Number</span>
+            </label>
+            <input
+              type="text"
+              value={bankAccountNumber}
+              onChange={(e) => setBankAccountNumber(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-white/10 bg-slate-950 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-mono"
+              placeholder="1000 4829 1048"
+            />
           </div>
 
           {/* Automation Settings Card */}

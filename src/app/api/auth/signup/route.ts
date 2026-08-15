@@ -4,7 +4,16 @@ import { hashPassword, signToken, setAuthCookie } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, phone } = await req.json();
+    const {
+      email,
+      password,
+      name,
+      phone,
+      telebirrNumber,
+      bankName,
+      bankAccountNumber,
+      accountHolderName
+    } = await req.json();
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -26,15 +35,23 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(password);
 
+    const formattedTelebirr = telebirrNumber ? telebirrNumber.trim() : null;
+    const formattedBankName = bankName ? bankName.trim() : 'Commercial Bank of Ethiopia (CBE)';
+    const formattedBankAccountNumber = bankAccountNumber ? bankAccountNumber.trim() : null;
+    const formattedAccountHolderName = accountHolderName ? accountHolderName.trim() : name.trim();
+
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase().trim(),
         passwordHash,
         name: name.trim(),
         phone: phone ? phone.trim() : null,
-        cbeAccount: '1000 4829 1048',
-        telebirrNumber: '+251 91 123 4567',
-        landlordPhone: phone ? phone.trim() : '+251 91 100 2233'
+        landlordPhone: phone ? phone.trim() : null,
+        telebirrNumber: formattedTelebirr,
+        bankName: formattedBankName,
+        bankAccountNumber: formattedBankAccountNumber,
+        accountHolderName: formattedAccountHolderName,
+        cbeAccount: formattedBankAccountNumber || null
       }
     });
 
@@ -46,8 +63,10 @@ export async function POST(req: NextRequest) {
         email: user.email,
         name: user.name,
         phone: user.phone,
-        cbeAccount: user.cbeAccount,
-        telebirrNumber: user.telebirrNumber
+        telebirrNumber: user.telebirrNumber,
+        bankName: user.bankName,
+        bankAccountNumber: user.bankAccountNumber,
+        accountHolderName: user.accountHolderName
       }
     });
 

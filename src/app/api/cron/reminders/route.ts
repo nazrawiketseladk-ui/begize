@@ -120,11 +120,21 @@ async function handleCronProcess(req: NextRequest, body: any) {
         continue;
       }
 
-      // Build landlord payment details string
-      const paymentParts: string[] = [];
-      if (landlord.cbeAccount) paymentParts.push(`CBE Account: ${landlord.cbeAccount}`);
-      if (landlord.telebirrNumber) paymentParts.push(`Telebirr: ${landlord.telebirrNumber}`);
-      const paymentString = paymentParts.length > 0 ? `\nPlease deposit to ${paymentParts.join(' or ')}.` : '';
+      // Dynamically build landlord payment details string
+      const paymentMethods: string[] = [];
+      if (landlord.telebirrNumber) {
+        paymentMethods.push(`Telebirr: ${landlord.telebirrNumber}`);
+      }
+      const bankName = landlord.bankName || 'CBE';
+      const bankAcc = landlord.bankAccountNumber || landlord.cbeAccount;
+      const holder = landlord.accountHolderName || landlord.name;
+      if (bankAcc) {
+        paymentMethods.push(`${bankName}: ${bankAcc} (${holder})`);
+      }
+
+      const paymentString = paymentMethods.length > 0
+        ? `\nክፍያ በ ${paymentMethods.join(' ወይም ')} መላክ ይችላሉ።`
+        : '';
 
       // Rule Evaluation
       const isUpcoming3Days = (dueDay - currentDay === 3) || (dueDay - currentDay === -27);

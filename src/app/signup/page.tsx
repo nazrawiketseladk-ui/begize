@@ -3,8 +3,19 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, Phone, ArrowRight, Sun, Moon } from 'lucide-react';
+import { Mail, Lock, User, Phone, ArrowRight, Sun, Moon, CreditCard, Building2, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const BANK_OPTIONS = [
+  'Commercial Bank of Ethiopia (CBE)',
+  'Bank of Abyssinia',
+  'Awash Bank',
+  'Dashen Bank',
+  'Berhan Bank',
+  'Nib Bank',
+  'Cooperative Bank of Oromia',
+  'Other'
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -12,6 +23,13 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+
+  // Payment details state
+  const [telebirrNumber, setTelebirrNumber] = useState('');
+  const [bankName, setBankName] = useState('Commercial Bank of Ethiopia (CBE)');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -25,7 +43,16 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, password })
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          password,
+          telebirrNumber,
+          bankName,
+          bankAccountNumber,
+          accountHolderName: accountHolderName || name
+        })
       });
 
       const data = await res.json();
@@ -44,7 +71,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 font-sans ${
+    <div className={`min-h-screen flex items-center justify-center p-4 py-8 transition-colors duration-300 font-sans ${
       darkMode ? 'bg-[#090D10] text-white' : 'bg-[#EDF2F2] text-zinc-900'
     }`}>
       
@@ -52,10 +79,11 @@ export default function SignupPage() {
       <div className="fixed top-0 left-1/3 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Theme Switcher Top Right */}
-      <div className="fixed top-6 right-6">
+      <div className="fixed top-6 right-6 z-50">
         <button
+          type="button"
           onClick={() => setDarkMode(!darkMode)}
-          className="px-3.5 py-1.5 rounded-full bg-white/10 border border-black/5 dark:border-white/10 text-xs font-bold flex items-center gap-2 shadow-sm"
+          className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-bold flex items-center gap-2 shadow-sm"
         >
           {darkMode ? (
             <>
@@ -74,9 +102,9 @@ export default function SignupPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`w-full max-w-md p-8 rounded-[32px] border shadow-2xl relative overflow-hidden ${
+        className={`w-full max-w-xl p-6 sm:p-8 rounded-[32px] border shadow-2xl relative overflow-hidden my-auto ${
           darkMode
-            ? 'bg-zinc-900/60 backdrop-blur-2xl border-white/10'
+            ? 'bg-zinc-900/80 backdrop-blur-2xl border-white/10'
             : 'bg-white border-black/5 shadow-xl'
         }`}
       >
@@ -87,8 +115,8 @@ export default function SignupPage() {
               B
             </div>
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Create Account</h1>
-          <p className="text-xs text-zinc-500 dark:text-slate-400">Join Begize to manage your rental property income</p>
+          <h1 className="text-2xl font-black tracking-tight">Create Landlord Account</h1>
+          <p className="text-xs text-zinc-500 dark:text-slate-400">Join Begize to automate tenant rental collection & SMS reminders</p>
         </div>
 
         {error && (
@@ -97,92 +125,202 @@ export default function SignupPage() {
           </div>
         )}
 
-        <form onSubmit={handleSignup} className="space-y-4">
+        <form onSubmit={handleSignup} className="space-y-5">
           
-          {/* Full Name */}
-          <div>
-            <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
-              Full Name *
-            </label>
-            <div className="relative">
-              <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
-                }`}
-                placeholder="e.g. Ketsela Tadesse"
-                required
-              />
+          {/* SECTION 1: ACCOUNT CREDENTIALS */}
+          <div className="space-y-3.5">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-[#0D7B50] dark:text-emerald-400 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" />
+              <span>Landlord Account Details</span>
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Full Name *
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder="e.g. Ketsela Tadesse"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder="0911002233"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Email Address *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder="landlord@begize.app"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Password *
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
-              Email Address *
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
-                }`}
-                placeholder="landlord@begize.app"
-                required
-              />
+          {/* SECTION 2: DEFAULT PAYMENT ACCOUNTS FOR SMS REMINDERS */}
+          <div className="pt-3 border-t border-black/5 dark:border-white/10 space-y-3.5">
+            <div>
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-[#0D7B50] dark:text-emerald-400 flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Default Payment Accounts (For SMS Reminders)</span>
+              </h2>
+              <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-0.5">
+                These payment accounts will be automatically injected into automated rent reminder SMS messages sent to your tenants.
+              </p>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Telebirr Number */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Telebirr Number
+                </label>
+                <div className="relative">
+                  <Smartphone className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={telebirrNumber}
+                    onChange={(e) => setTelebirrNumber(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder="0911234567"
+                  />
+                </div>
+              </div>
+
+              {/* Primary Bank Dropdown */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Primary Bank
+                </label>
+                <div className="relative">
+                  <Building2 className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <select
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                  >
+                    {BANK_OPTIONS.map((bank) => (
+                      <option key={bank} value={bank} className={darkMode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900'}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Bank Account Number */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Bank Account Number
+                </label>
+                <div className="relative">
+                  <CreditCard className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder="1000 4829 1048"
+                  />
+                </div>
+              </div>
+
+              {/* Account Holder Name */}
+              <div>
+                <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
+                  Account Holder Name
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={accountHolderName}
+                    onChange={(e) => setAccountHolderName(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
+                    }`}
+                    placeholder={name || 'Account Holder Name'}
+                  />
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          {/* Phone Number */}
-          <div>
-            <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
-              Phone Number
-            </label>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
-                }`}
-                placeholder="+251 91 100 2233"
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="block text-xs font-bold mb-1 text-zinc-700 dark:text-slate-300">
-              Password *
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  darkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-zinc-50 border-black/10 text-zinc-900'
-                }`}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Submit */}
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 px-6 rounded-2xl bg-[#0D7B50] hover:bg-[#0A6441] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-all glow-emerald disabled:opacity-50 mt-2"
+            className="w-full py-3.5 px-6 rounded-2xl bg-[#0D7B50] hover:bg-[#0A6441] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-all glow-emerald disabled:opacity-50 mt-4"
           >
             <span>{isLoading ? 'Creating Account...' : 'Create Account'}</span>
             <ArrowRight className="w-4 h-4 stroke-[3]" />
