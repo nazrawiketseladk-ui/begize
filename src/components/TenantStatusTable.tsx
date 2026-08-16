@@ -24,7 +24,7 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
   onOpenAddModal,
 }) => {
   return (
-    <div className="w-full rounded-[24px] bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 p-4 sm:p-6 overflow-hidden min-w-0 box-border transition-all">
+    <div className="w-full rounded-2xl bg-white/80 dark:bg-slate-900/50 backdrop-blur-xl border border-black/5 dark:border-white/[0.08] p-4 sm:p-6 overflow-hidden min-w-0 box-border shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all">
       
       {/* Header & Controls Alignment */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 w-full">
@@ -43,7 +43,7 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-full bg-zinc-100 dark:bg-slate-950/40 border border-black/5 dark:border-white/10 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-3.5 py-2 rounded-full bg-zinc-100 dark:bg-slate-950/60 border border-black/5 dark:border-white/10 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Search by tenant name, room, or phone..."
             />
           </div>
@@ -51,11 +51,11 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
       </div>
 
       {/* Dedicated Scroll Container */}
-      <div className="w-full overflow-x-auto rounded-xl border border-zinc-100 dark:border-zinc-800">
+      <div className="w-full overflow-x-auto rounded-xl border border-black/5 dark:border-white/[0.08]">
         {rooms.length > 0 ? (
           <table className="w-full text-left border-collapse min-w-[650px]">
             <thead>
-              <tr className="text-zinc-500 dark:text-slate-400 border-b border-black/5 dark:border-white/10 font-bold uppercase text-[10px] tracking-wider bg-zinc-50/50 dark:bg-white/[0.02]">
+              <tr className="text-zinc-500 dark:text-slate-400 border-b border-black/5 dark:border-white/[0.08] font-bold uppercase text-[10px] tracking-wider bg-zinc-50/60 dark:bg-white/[0.02]">
                 <th className="px-4 py-3 text-xs whitespace-nowrap w-24">Room #</th>
                 <th className="px-4 py-3 text-xs whitespace-nowrap min-w-[160px]">Tenant Name & Phone</th>
                 <th className="px-4 py-3 text-xs whitespace-nowrap w-44">Monthly Reminder Day</th>
@@ -63,20 +63,20 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
                 <th className="px-4 py-3 text-xs text-center whitespace-nowrap w-44">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-black/5 dark:divide-white/5">
+            <tbody className="divide-y divide-black/5 dark:divide-white/[0.05]">
               {rooms.map((room) => {
                 return (
-                  <tr key={room.id} className="hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors group">
+                  <tr key={room.id} className="hover:bg-zinc-50/80 dark:hover:bg-white/[0.04] transition-colors duration-200 group">
                     
                     {/* Room Number Badge */}
-                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                       <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-white/10 border border-black/5 dark:border-white/15 flex items-center justify-center font-black text-zinc-900 dark:text-white text-base">
                         {room.roomNumber}
                       </div>
                     </td>
 
                     {/* Tenant Avatar, Name & Phone */}
-                    <td className="px-4 py-3 text-sm min-w-[160px]">
+                    <td className="px-4 py-3.5 text-sm min-w-[160px]">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0">
                           {room.tenantName.charAt(0)}
@@ -96,26 +96,26 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
                     </td>
 
                     {/* Monthly Reminder Day */}
-                    <td className="px-4 py-3 text-sm whitespace-nowrap font-semibold text-zinc-700 dark:text-slate-300">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 text-[#0D7B50] dark:text-emerald-300 text-xs font-extrabold">
-                        <Calendar className="w-3.5 h-3.5" />
+                    <td className="px-4 py-3.5 text-sm whitespace-nowrap font-semibold text-zinc-700 dark:text-slate-300">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#0D7B50] dark:text-emerald-300 text-xs font-extrabold">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Day {room.dueDay} of month</span>
                       </div>
                     </td>
 
                     {/* Rent Amount */}
-                    <td className="px-4 py-3 text-sm text-right whitespace-nowrap font-black text-zinc-900 dark:text-white text-base">
+                    <td className="px-4 py-3.5 text-sm text-right whitespace-nowrap font-black text-zinc-900 dark:text-white text-base">
                       {room.rentAmount.toLocaleString()} <span className="text-xs font-bold text-[#0D7B50] dark:text-emerald-400">ETB</span>
                     </td>
 
                     {/* Actions: Edit, Preview Template, Delete */}
-                    <td className="px-4 py-3 text-sm text-center whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-sm text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         
                         {/* Edit Button */}
                         <button
                           onClick={() => onEditRoom(room)}
-                          className="px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-slate-300 hover:bg-zinc-200 dark:hover:bg-white/20 transition-all font-bold text-xs flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-800 dark:text-slate-200 border border-black/5 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-white/20 transition-all font-bold text-xs flex items-center gap-1.5 shadow-sm"
                           title="Edit Tenant Details"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -125,7 +125,7 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
                         {/* Preview SMS Template */}
                         <button
                           onClick={() => onOpenSMSModal(room)}
-                          className="px-2.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-all font-bold text-xs flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20 dark:border-blue-500/30 hover:bg-blue-500/20 dark:hover:bg-blue-500/30 transition-all font-bold text-xs flex items-center gap-1.5 shadow-sm"
                           title="Preview SMS Template"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
@@ -140,7 +140,7 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
                                 onDeleteRoom(room.id);
                               }
                             }}
-                            className="p-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all"
+                            className="p-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all shadow-sm"
                             title="Delete Tenant"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
         ) : (
           /* Empty State Illustration */
           <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-[#E6F5EE] dark:bg-emerald-500/20 text-[#0D7B50] dark:text-emerald-400 flex items-center justify-center shadow-inner">
+            <div className="w-14 h-14 rounded-2xl bg-[#E6F5EE] dark:bg-emerald-500/20 text-[#0D7B50] dark:text-emerald-400 flex items-center justify-center shadow-inner border border-emerald-500/20">
               <Home className="w-7 h-7" />
             </div>
             <div>
@@ -170,7 +170,7 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
             {onOpenAddModal && (
               <button
                 onClick={onOpenAddModal}
-                className="mt-2 px-4 py-2 rounded-full bg-[#0D7B50] hover:bg-[#0A6441] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all glow-emerald"
+                className="mt-2 px-4 py-2 rounded-full bg-[#0D7B50] hover:bg-[#0A6441] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all glow-emerald"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
                 <span>+ Add First Tenant</span>
