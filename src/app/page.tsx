@@ -30,7 +30,7 @@ export default function HomePage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Time-aware greeting & Date
-  const [greeting, setGreeting] = useState<string>('Good Day');
+  const [greeting, setGreeting] = useState<string>('Welcome Back');
   const [currentDateStr, setCurrentDateStr] = useState<string>('');
 
   // Filter & Search
@@ -146,7 +146,7 @@ export default function HomePage() {
     if (savedDark !== null) {
       setDarkMode(JSON.parse(savedDark));
     } else {
-      setDarkMode(true);
+      setDarkMode(false);
     }
   }, []);
 
@@ -335,25 +335,24 @@ export default function HomePage() {
 
   if (!mounted || isLoadingData) {
     return (
-      <div className="min-h-screen bg-[#EDF2F2] dark:bg-[#0B0F17] text-zinc-900 dark:text-slate-100 flex items-center justify-center font-sans">
+      <div className="min-h-screen bg-[#ECEEF0] dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 flex items-center justify-center font-sans">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 animate-spin">
-            <div className="w-full h-full bg-[#EDF2F2] dark:bg-slate-950 rounded-[14px]" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#0E8A5E] to-emerald-400 p-0.5 animate-spin">
+            <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[14px]" />
           </div>
-          <span className="text-xs font-bold text-[#0D7B50] dark:text-emerald-400 font-mono tracking-widest">BEGIZE LOADING...</span>
+          <span className="text-xs font-extrabold text-[#0E8A5E] dark:text-emerald-400 font-mono tracking-widest">BEGIZE LOADING...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#EDF2F2] dark:bg-[#0B0F17] text-zinc-900 dark:text-slate-100 flex flex-col font-sans relative overflow-x-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-[#ECEEF0] dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 flex flex-col font-sans relative overflow-x-hidden transition-colors duration-300">
       
-      {/* Dynamic Ambient Background Glow Orbs */}
-      <div className="fixed top-0 left-1/4 w-96 sm:w-[500px] h-96 sm:h-[500px] bg-emerald-500/12 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse" />
-      <div className="fixed top-1/3 right-10 w-96 sm:w-[600px] h-96 sm:h-[600px] bg-indigo-500/10 rounded-full blur-[160px] pointer-events-none -z-10" />
+      {/* Ambient Radial Background Glow */}
+      <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[160px] pointer-events-none -z-10" />
 
-      {/* Left Floating Glass Sidebar (Desktop) / Sticky Bottom Nav (Mobile) */}
+      {/* Floating Pill Sidebar / Nav */}
       <GlassSidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -366,10 +365,10 @@ export default function HomePage() {
         onLogout={handleLogout}
       />
 
-      {/* Main Content Shell with pb-28 to clear mobile bottom navigation bar */}
-      <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 xl:pl-24 pb-28 md:pb-12 pt-2 box-border min-h-screen overflow-x-hidden flex flex-col gap-6">
+      {/* Main Container Shell */}
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 xl:pl-24 pb-28 md:pb-12 pt-3 box-border min-h-screen flex flex-col gap-6">
         
-        {/* Top Header Navigation Bar */}
+        {/* Header Navigation Bar */}
         <GlassHeader
           activeTab={activeTab}
           onSelectTab={setActiveTab}
@@ -381,29 +380,29 @@ export default function HomePage() {
           onLogout={handleLogout}
         />
 
-        {/* Greeting & Main Action Flow */}
-        <div className="flex flex-col gap-3 w-full mb-6">
+        {/* Welcome Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full mb-2">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
-              {greeting}, <span className="text-[#0D7B50] dark:text-emerald-400 font-serif">{userName}</span>
+            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Welcome Back, <span className="text-[#0E8A5E] dark:text-emerald-400 font-serif">{userName}</span>
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-slate-400 mt-0.5 font-medium">
-              Monthly due day rental reminder system
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              Monthly due day rental reminder system & tenant schedule
             </p>
           </div>
 
-          {/* Date Badge + Add Tenant Button */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full">
-            <div className="px-3.5 py-2 rounded-full bg-white/80 dark:bg-slate-900/50 backdrop-blur-xl border border-black/5 dark:border-white/[0.08] text-xs font-semibold text-zinc-700 dark:text-slate-300 flex items-center gap-2 shadow-sm whitespace-nowrap">
-              <Calendar className="w-3.5 h-3.5 text-[#0D7B50] dark:text-emerald-400" />
+          {/* Date Badge & Primary Action Button */}
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2.5 rounded-full bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/[0.08] text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 shadow-sm whitespace-nowrap">
+              <Calendar className="w-4 h-4 text-[#0E8A5E] dark:text-emerald-400" />
               <span>{currentDateStr || 'Sunday, Aug 16, 2026'}</span>
             </div>
 
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setIsAddTenantOpen(true)}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-[#0D7B50] hover:bg-[#0A6441] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 dark:shadow-emerald-500/25 transition-all glow-emerald whitespace-nowrap"
+              className="px-5 py-2.5 rounded-full bg-[#0E8A5E] hover:bg-[#0B6E4A] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-md shadow-emerald-700/20 dark:shadow-emerald-500/25 transition-all whitespace-nowrap"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>+ Add Tenant</span>
@@ -425,69 +424,73 @@ export default function HomePage() {
               className="w-full flex flex-col gap-6"
             >
               
-              {/* TOP SUMMARY STATS GRID */}
+              {/* TOP SUMMARY STATS GRID (Quixotic 3-Column Style) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full">
                 
-                {/* Stat 1: Total Monthly Rent Income */}
-                <div className="rounded-2xl bg-white/80 dark:bg-slate-900/50 backdrop-blur-xl border border-black/5 dark:border-white/[0.08] p-5 sm:p-6 flex flex-col justify-between space-y-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all duration-200 hover:border-emerald-500/30">
+                {/* Stat Card 1: Total Monthly Rent */}
+                <div className="rounded-3xl bg-white dark:bg-slate-900/60 p-6 flex flex-col justify-between space-y-4 border border-slate-100 dark:border-white/[0.08] shadow-[0_10px_35px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       Total Monthly Rent
                     </span>
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                      <DollarSign className="w-4 h-4" />
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-[#0E8A5E] dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20">
+                      <DollarSign className="w-5 h-5" />
                     </div>
                   </div>
                   <div>
-                    <div className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-                      {totalMonthlyRent.toLocaleString()} <span className="text-xs font-bold text-[#0D7B50] dark:text-emerald-400">ETB</span>
+                    <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                      {totalMonthlyRent.toLocaleString()} <span className="text-xs font-extrabold text-[#0E8A5E] dark:text-emerald-400">ETB</span>
                     </div>
-                    <span className="text-[11px] text-zinc-500 dark:text-slate-400 font-medium block mt-1">Combined monthly rental value</span>
+                    <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#0E8A5E] dark:text-emerald-300 text-[11px] font-bold">
+                      Combined monthly rental value
+                    </span>
                   </div>
                 </div>
 
-                {/* Stat 2: Total Registered Tenants */}
-                <div className="rounded-2xl bg-white/80 dark:bg-slate-900/50 backdrop-blur-xl border border-black/5 dark:border-white/[0.08] p-5 sm:p-6 flex flex-col justify-between space-y-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all duration-200 hover:border-emerald-500/30">
+                {/* Stat Card 2: Registered Tenants */}
+                <div className="rounded-3xl bg-white dark:bg-slate-900/60 p-6 flex flex-col justify-between space-y-4 border border-slate-100 dark:border-white/[0.08] shadow-[0_10px_35px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       Registered Tenants
                     </span>
-                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-                      <Home className="w-4 h-4" />
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-500/20">
+                      <Home className="w-5 h-5" />
                     </div>
                   </div>
                   <div>
-                    <div className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-                      {rooms.length} <span className="text-xs font-bold text-blue-400">Rooms</span>
+                    <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                      {rooms.length} <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Rooms</span>
                     </div>
-                    <span className="text-[11px] text-zinc-500 dark:text-slate-400 font-medium block mt-1">Scheduled for monthly SMS</span>
+                    <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
+                      Active tenant schedule
+                    </span>
                   </div>
                 </div>
 
-                {/* Stat 3: 24/7 SMS Automation Clean Status */}
-                <div className="rounded-2xl bg-white/80 dark:bg-slate-900/50 backdrop-blur-xl border border-black/5 dark:border-white/[0.08] p-5 sm:p-6 flex flex-col justify-between space-y-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all duration-200 hover:border-emerald-500/30">
+                {/* Stat Card 3: 24/7 SMS Automation */}
+                <div className="rounded-3xl bg-white dark:bg-slate-900/60 p-6 flex flex-col justify-between space-y-4 border border-slate-100 dark:border-white/[0.08] shadow-[0_10px_35px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       24/7 SMS Automation
                     </span>
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                      <Bell className="w-4 h-4" />
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-500/20">
+                      <Bell className="w-5 h-5" />
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <div className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0E8A5E] dark:bg-emerald-400 animate-pulse shrink-0" />
                       <span>{paymentSettings.autoSmsEnabled ? 'Active (Daily Cron)' : 'Disabled'}</span>
                     </div>
-                    <span className="text-[11px] text-zinc-500 dark:text-slate-400 font-medium block mt-1">
-                      Automatic daily check at 1:00 PM EAT
+                    <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 text-[11px] font-semibold">
+                      Scheduled daily at 1:00 PM EAT
                     </span>
                   </div>
                 </div>
 
               </div>
 
-              {/* BOTTOM ROW: Tenant Rent Status Table */}
+              {/* BOTTOM ROW: Tenant Roster Table */}
               <div className="w-full min-w-0 box-border">
                 <TenantStatusTable
                   rooms={filteredRooms}
@@ -593,7 +596,7 @@ export default function HomePage() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-black/5 dark:border-white/10 py-6 text-center text-xs text-zinc-500 dark:text-slate-400 mt-auto">
+      <footer className="border-t border-slate-200 dark:border-white/10 py-6 text-center text-xs text-slate-400 dark:text-slate-500 mt-auto">
         <p>Begize • Monthly Due Day Rental Reminder System</p>
       </footer>
 
