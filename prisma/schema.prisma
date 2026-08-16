@@ -20,6 +20,7 @@ model User {
   bankAccountNumber String?
   accountHolderName String?
   landlordPhone      String?
+  smsTemplate        String?  @default("ሰላም {tenant_name}፣ የክፍል {room_number} የዚህ ወር ኪራይ {amount} ETB ዛሬ መከፈል አለበት። ክፍያ: {payment_details}። እናመሰግናለን!")
   preferredAlertTime String?  @default("09:00")
   autoSmsEnabled     Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -38,7 +39,7 @@ model Tenant {
   phone        String
   rentAmount   Float
   dueDay       Int
-  status       String   @default("due-soon")
+  status       String   @default("active")
   lastPaidDate String?
   notes        String?
   createdAt    DateTime @default(now())
@@ -72,8 +73,8 @@ model SMSLog {
   phone         String
   message       String
   status        String   @default("Delivered")
-  type          String   @default("MANUAL_SMS")
-  language      String   @default("en")
+  type          String   @default("DUE_DAY_REMINDER")
+  language      String   @default("am")
   sentAt        String
   createdAt     DateTime @default(now())
 

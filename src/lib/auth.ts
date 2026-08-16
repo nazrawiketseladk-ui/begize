@@ -54,6 +54,7 @@ export async function getAuthenticatedUser(req: NextRequest) {
       bankAccountNumber: true,
       accountHolderName: true,
       landlordPhone: true,
+      smsTemplate: true,
       preferredAlertTime: true,
       autoSmsEnabled: true,
       createdAt: true

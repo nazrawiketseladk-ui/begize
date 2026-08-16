@@ -4,9 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GlassSidebar } from '../components/GlassSidebar';
 import { GlassHeader } from '../components/GlassHeader';
-import { RentOverviewCard } from '../components/RentOverviewCard';
-import { CollectionTimelineCard } from '../components/CollectionTimelineCard';
-import { TotalCollectedActionCard } from '../components/TotalCollectedActionCard';
 import { TenantStatusTable } from '../components/TenantStatusTable';
 import { RoomCard } from '../components/RoomCard';
 import { SMSHistoryView } from '../components/SMSHistoryView';
@@ -18,7 +15,7 @@ import { Toast } from '../components/Toast';
 import { INITIAL_ROOMS, INITIAL_PAYMENT_SETTINGS } from '../data/sampleData';
 import { Room, PaymentSetting, SMSLog } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Plus } from 'lucide-react';
+import { Calendar, Plus, Home, DollarSign, Bell, Play } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
@@ -38,7 +35,6 @@ export default function HomePage() {
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'due-soon' | 'overdue'>('all');
 
   // Modals state
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -240,52 +236,13 @@ export default function HomePage() {
       if (res.ok) {
         const created = await res.json();
         setRooms([created, ...rooms]);
-        showToast(`Tenant ${created.tenantName} (Room ${created.roomNumber}) added to database!`, 'success');
+        showToast(`Tenant ${created.tenantName} (Room ${created.roomNumber}) added!`, 'success');
       } else {
         throw new Error('Failed to create tenant');
       }
     } catch (err: any) {
       setRooms([newRoom, ...rooms]);
       showToast(`Tenant ${newRoom.tenantName} added!`, 'success');
-    }
-  };
-
-  // Toggle Room Payment Status in Database
-  const handleToggleRoomStatus = async (roomId: string) => {
-    const targetRoom = rooms.find(r => r.id === roomId);
-    if (!targetRoom) return;
-
-    const nextStatus: Room['status'] = targetRoom.status === 'paid' ? 'due-soon' : 'paid';
-    const today = new Date().toISOString().split('T')[0];
-
-    try {
-      const res = await fetch('/api/tenants', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: roomId,
-          status: nextStatus,
-          lastPaidDate: nextStatus === 'paid' ? today : targetRoom.lastPaidDate
-        })
-      });
-
-      if (res.ok) {
-        const updatedTenant = await res.json();
-        setRooms(rooms.map(r => r.id === roomId ? updatedTenant : r));
-        showToast(`Room ${updatedTenant.roomNumber} marked as ${nextStatus === 'paid' ? 'paid!' : 'unpaid.'}`, 'success');
-      }
-    } catch (err) {
-      setRooms(rooms.map(r => r.id === roomId ? { ...r, status: nextStatus, lastPaidDate: nextStatus === 'paid' ? today : r.lastPaidDate } : r));
-    }
-  };
-
-  // Quick Action Mark Paid
-  const handleQuickMarkPaid = () => {
-    const unpaid = rooms.find(r => r.status !== 'paid');
-    if (unpaid) {
-      handleToggleRoomStatus(unpaid.id);
-    } else {
-      showToast('All rooms are paid up to date!', 'info');
     }
   };
 
@@ -301,10 +258,26 @@ export default function HomePage() {
       if (res.ok) {
         const saved = await res.json();
         setRooms(rooms.map(r => r.id === saved.id ? saved : r));
-        showToast(`Room ${saved.roomNumber} updated in database!`, 'success');
+        showToast(`Room ${saved.roomNumber} updated!`, 'success');
       }
     } catch (err) {
       setRooms(rooms.map(r => r.id === updatedRoom.id ? updatedRoom : r));
+    }
+  };
+
+  // Delete Room from Database
+  const handleDeleteRoom = async (roomId: string) => {
+    try {
+      const res = await fetch(`/api/tenants?id=${roomId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        setRooms(rooms.filter(r => r.id !== roomId));
+        showToast('Tenant room deleted', 'info');
+      }
+    } catch (err) {
+      setRooms(rooms.filter(r => r.id !== roomId));
     }
   };
 
@@ -316,7 +289,8 @@ export default function HomePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          isManualTest: true
+          isManualTest: true,
+          forceAll: true
         })
       });
 
@@ -327,12 +301,6 @@ export default function HomePage() {
         if (logsRes.ok) {
           const updatedLogs = await logsRes.json();
           setSmsLogs(updatedLogs);
-        }
-
-        const tenantsRes = await fetch('/api/tenants');
-        if (tenantsRes.ok) {
-          const updatedTenants = await tenantsRes.json();
-          setRooms(updatedTenants);
         }
 
         const totalSent = (data.tenantSmsSent || 0) + (data.landlordAlertsSent || 0);
@@ -352,23 +320,18 @@ export default function HomePage() {
   };
 
   // Calculated totals
-  const totalExpectedRent = rooms.reduce((sum, r) => sum + r.rentAmount, 0);
-  const totalCollectedRent = rooms.filter(r => r.status === 'paid').reduce((sum, r) => sum + r.rentAmount, 0);
-  const overdueCount = rooms.filter(r => r.status === 'overdue').length;
-  const collectionPercentage = totalExpectedRent > 0 ? Math.round((totalCollectedRent / totalExpectedRent) * 100) : 0;
+  const totalMonthlyRent = rooms.reduce((sum, r) => sum + r.rentAmount, 0);
 
   // Filtered rooms
   const filteredRooms = rooms.filter((r) => {
-    const matchesSearch =
+    return (
       r.roomNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.tenantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.phone.includes(searchQuery);
-
-    if (statusFilter === 'all') return matchesSearch;
-    return matchesSearch && r.status === statusFilter;
+      r.phone.includes(searchQuery)
+    );
   });
 
-  const userName = paymentSettings.accountHolderName || 'Ketsela Tadesse';
+  const userName = paymentSettings.accountHolderName || 'Landlord';
 
   if (!mounted || isLoadingData) {
     return (
@@ -414,7 +377,6 @@ export default function HomePage() {
           onOpenSettings={() => setIsSettingsOpen(true)}
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode(!darkMode)}
-          overdueCount={overdueCount}
           roomsCount={rooms.length}
           onLogout={handleLogout}
         />
@@ -426,7 +388,7 @@ export default function HomePage() {
               {greeting}, <span className="text-[#0D7B50] dark:text-emerald-400 font-serif">{userName}</span>
             </h2>
             <p className="text-xs text-zinc-500 dark:text-slate-400 mt-0.5 font-medium">
-              Monthly rental income & tenant collection overview
+              Monthly due day rental reminder system
             </p>
           </div>
 
@@ -434,7 +396,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center gap-2.5 w-full">
             <div className="px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] backdrop-blur-xl border border-black/5 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-slate-300 flex items-center gap-2 shadow-sm whitespace-nowrap">
               <Calendar className="w-3.5 h-3.5 text-[#0D7B50] dark:text-emerald-400" />
-              <span>{currentDateStr || 'Saturday, Aug 15, 2026'}</span>
+              <span>{currentDateStr || 'Sunday, Aug 16, 2026'}</span>
             </div>
 
             <motion.button
@@ -463,49 +425,82 @@ export default function HomePage() {
               className="w-full flex flex-col gap-6"
             >
               
-              {/* TOP STATS ROW GRID */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 w-full">
+              {/* TOP SUMMARY STATS GRID */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full">
                 
-                {/* Card 1: Total Collected Balance & Quick Actions */}
-                <div className="min-w-0 w-full box-border transition-all duration-200 hover:-translate-y-0.5">
-                  <TotalCollectedActionCard
-                    totalCollectedRent={totalCollectedRent}
-                    rooms={rooms}
-                    onOpenSMSModal={(r) => setSmsTargetRoom(r)}
-                    onQuickMarkPaid={handleQuickMarkPaid}
-                  />
+                {/* Stat 1: Total Monthly Rent Income */}
+                <div className="fintech-card p-5 flex flex-col justify-between space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                      Total Monthly Rent
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+                      {totalMonthlyRent.toLocaleString()} <span className="text-xs font-bold text-[#0D7B50] dark:text-emerald-400">ETB</span>
+                    </div>
+                    <span className="text-[11px] text-zinc-500 dark:text-slate-400 font-medium">Combined monthly rental value</span>
+                  </div>
                 </div>
 
-                {/* Card 2: Collection Timeline & Rate Chart */}
-                <div className="min-w-0 w-full box-border transition-all duration-200 hover:-translate-y-0.5">
-                  <CollectionTimelineCard
-                    collectionPercentage={collectionPercentage}
-                  />
+                {/* Stat 2: Total Registered Tenants */}
+                <div className="fintech-card p-5 flex flex-col justify-between space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                      Registered Tenants
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                      <Home className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+                      {rooms.length} <span className="text-xs font-bold text-blue-500">Rooms</span>
+                    </div>
+                    <span className="text-[11px] text-zinc-500 dark:text-slate-400 font-medium">Scheduled for monthly SMS</span>
+                  </div>
                 </div>
 
-                {/* Card 3: Total Expected Rent Goal Emerald Card */}
-                <div className="min-w-0 w-full box-border transition-all duration-200 hover:-translate-y-0.5 sm:col-span-2 lg:col-span-1">
-                  <RentOverviewCard
-                    totalExpectedRent={totalExpectedRent}
-                    totalCollectedRent={totalCollectedRent}
-                    paymentSettings={paymentSettings}
-                    onOpenSettings={() => setIsSettingsOpen(true)}
-                  />
+                {/* Stat 3: Automated SMS Trigger */}
+                <div className="fintech-card p-5 flex flex-col justify-between space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                      24/7 SMS Automation
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                      <Bell className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{paymentSettings.autoSmsEnabled ? 'Active (Daily Cron)' : 'Disabled'}</span>
+                    </div>
+                    <button
+                      onClick={handleRunDailyAutomation}
+                      disabled={isTestingAutomation}
+                      className="mt-1 text-[11px] font-bold text-[#0D7B50] dark:text-emerald-400 hover:underline flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>{isTestingAutomation ? 'Running check...' : 'Run due day check now'}</span>
+                    </button>
+                  </div>
                 </div>
 
               </div>
 
-              {/* BOTTOM ROW: Full Width Tenant Rent Status Table */}
+              {/* BOTTOM ROW: Tenant Rent Status Table */}
               <div className="w-full min-w-0 box-border">
                 <TenantStatusTable
                   rooms={filteredRooms}
-                  onToggleStatus={handleToggleRoomStatus}
                   onEditRoom={(r) => setEditingRoom(r)}
+                  onDeleteRoom={handleDeleteRoom}
                   onOpenSMSModal={(r) => setSmsTargetRoom(r)}
                   searchQuery={searchQuery}
                   onSearchChange={setSearchQuery}
-                  statusFilter={statusFilter}
-                  onFilterChange={setStatusFilter}
                   onOpenAddModal={() => setIsAddTenantOpen(true)}
                 />
               </div>
@@ -528,7 +523,6 @@ export default function HomePage() {
                   <div key={room.id} className="min-w-0 w-full box-border transition-all duration-200 hover:-translate-y-0.5">
                     <RoomCard
                       room={room}
-                      onToggleStatus={handleToggleRoomStatus}
                       onEditRoom={(r) => setEditingRoom(r)}
                       onOpenSMSModal={(r) => setSmsTargetRoom(r)}
                     />
@@ -605,7 +599,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-black/5 dark:border-white/10 py-6 text-center text-xs text-zinc-500 dark:text-slate-400 mt-auto">
-        <p>Begize • Rental & Collection Management System</p>
+        <p>Begize • Monthly Due Day Rental Reminder System</p>
       </footer>
 
     </div>

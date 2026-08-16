@@ -1,4 +1,4 @@
-export type RoomStatus = 'paid' | 'due-soon' | 'overdue';
+export type RoomStatus = 'active' | 'inactive' | 'paid' | 'due-soon' | 'overdue';
 
 export interface Room {
   id: string;
@@ -7,7 +7,7 @@ export interface Room {
   phone: string;
   rentAmount: number; // in ETB
   dueDay: number; // Day of the month (1-31)
-  status: RoomStatus;
+  status?: string;
   lastPaidDate?: string;
   notes?: string;
 }
@@ -33,6 +33,7 @@ export interface PaymentSetting {
   bankAccountNumber?: string;
   accountHolderName: string;
   landlordPhone: string;
+  smsTemplate?: string;
   preferredAlertTime: string;
   autoSmsEnabled: boolean;
 }

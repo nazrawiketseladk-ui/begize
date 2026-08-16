@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { SMSLog } from '../types';
-import { MessageSquare, Search, Trash2, Calendar, ShieldCheck, ChevronDown, ChevronUp, Bell, Clock, Send, Play } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare, Search, Trash2, Calendar, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface SMSHistoryViewProps {
   logs: SMSLog[];
@@ -49,20 +49,21 @@ export const SMSHistoryView: React.FC<SMSHistoryViewProps> = ({
 
   const getTypeBadgeStyle = (type?: string) => {
     switch (type) {
+      case 'DUE_DAY_REMINDER':
       case 'DUE_DATE_REMINDER':
         return {
           bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-          label: 'Rent Due'
+          label: 'Monthly Reminder'
         };
       case 'ADVANCE_NOTICE':
         return {
           bg: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-          label: '3-Day Advance'
+          label: 'Advance Notice'
         };
       case 'OVERDUE_ALERT':
         return {
-          bg: 'bg-red-500/20 text-red-300 border-red-500/30',
-          label: 'Overdue Alert'
+          bg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+          label: 'Reminder Alert'
         };
       default:
         return {
@@ -107,7 +108,7 @@ export const SMSHistoryView: React.FC<SMSHistoryViewProps> = ({
           </div>
 
           <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">
-            Complete historical log of automated rent reminders, 3-day notices, and landlord alert dispatches.
+            Complete historical log of automated monthly due day SMS reminders dispatched to tenants.
           </p>
         </div>
 
@@ -279,7 +280,7 @@ export const SMSHistoryView: React.FC<SMSHistoryViewProps> = ({
         <div className="p-12 text-center text-zinc-500 dark:text-slate-400 text-xs space-y-2 border border-dashed border-black/10 dark:border-white/10 rounded-2xl">
           <MessageSquare className="w-8 h-8 mx-auto text-zinc-400" />
           <p className="font-bold text-zinc-800 dark:text-zinc-200">No SMS audit logs found</p>
-          <p>Click "Run Automation Check Now" above or send an SMS from any room card to generate logs.</p>
+          <p>Click "Run Automation Check Now" above to trigger a test check for today's due day reminders.</p>
         </div>
       )}
 

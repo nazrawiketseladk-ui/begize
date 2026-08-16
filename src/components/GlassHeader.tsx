@@ -11,7 +11,6 @@ interface GlassHeaderProps {
   onOpenSettings: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
-  overdueCount: number;
   roomsCount: number;
   onLogout?: () => void;
 }
@@ -23,11 +22,10 @@ export const GlassHeader: React.FC<GlassHeaderProps> = ({
   onOpenSettings,
   darkMode,
   onToggleDarkMode,
-  overdueCount,
   roomsCount,
   onLogout,
 }) => {
-  const userName = paymentSettings.accountHolderName || 'Ketsela Tadesse';
+  const userName = paymentSettings.accountHolderName || 'Landlord';
 
   return (
     <header className="w-full flex items-center justify-between p-3 sm:p-4 rounded-[24px] bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 mb-5 shadow-sm transition-all box-border">
@@ -43,7 +41,7 @@ export const GlassHeader: React.FC<GlassHeaderProps> = ({
           <h1 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight">
             Begize
           </h1>
-          <p className="text-[10px] sm:text-[11px] text-zinc-500 dark:text-slate-400 font-medium">Rental Manager</p>
+          <p className="text-[10px] sm:text-[11px] text-zinc-500 dark:text-slate-400 font-medium">Rental Reminder System</p>
         </div>
       </div>
 
@@ -70,7 +68,7 @@ export const GlassHeader: React.FC<GlassHeaderProps> = ({
           }`}
         >
           <Home className="w-3.5 h-3.5" />
-          <span>Rooms ({roomsCount})</span>
+          <span>Tenants ({roomsCount})</span>
         </button>
 
         <button
@@ -92,16 +90,11 @@ export const GlassHeader: React.FC<GlassHeaderProps> = ({
         {/* Notifications Bell */}
         <div className="relative shrink-0">
           <button
-            onClick={() => onSelectTab('rooms')}
+            onClick={() => onSelectTab('sms-logs')}
             className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-700 dark:text-slate-300 transition-colors"
-            title="Urgent Alerts"
+            title="SMS Logs History"
           >
             <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            {overdueCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-red-500 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center animate-pulse">
-                {overdueCount}
-              </span>
-            )}
           </button>
         </div>
 
@@ -109,7 +102,7 @@ export const GlassHeader: React.FC<GlassHeaderProps> = ({
         <button
           onClick={onToggleDarkMode}
           className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/15 border border-black/5 dark:border-white/10 text-zinc-800 dark:text-white text-[11px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all shadow-sm shrink-0"
-          title={darkMode ? "Switch to Quixotic Soft Light Theme" : "Switch to Dark Glass Emerald Theme"}
+          title={darkMode ? "Switch to Soft Light Theme" : "Switch to Dark Glass Theme"}
         >
           {darkMode ? (
             <>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedUser } from '@/lib/auth';
 
+const DEFAULT_SMS_TEMPLATE = "ሰላም {tenant_name}፣ የክፍል {room_number} የዚህ ወር ኪራይ {amount} ETB ዛሬ መከፈል አለበት። ክፍያ: {payment_details}። እናመሰግናለን!";
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser(req);
@@ -14,6 +16,7 @@ export async function GET(req: NextRequest) {
       bankAccountNumber: user.bankAccountNumber || user.cbeAccount || '',
       accountHolderName: user.accountHolderName || user.name || '',
       landlordPhone: user.landlordPhone || user.phone || '',
+      smsTemplate: user.smsTemplate || DEFAULT_SMS_TEMPLATE,
       preferredAlertTime: user.preferredAlertTime || '09:00',
       autoSmsEnabled: user.autoSmsEnabled ?? true
     });
@@ -35,6 +38,7 @@ export async function PUT(req: NextRequest) {
       bankAccountNumber,
       accountHolderName,
       landlordPhone,
+      smsTemplate,
       preferredAlertTime,
       autoSmsEnabled
     } = body;
@@ -48,6 +52,7 @@ export async function PUT(req: NextRequest) {
         ...(bankAccountNumber !== undefined && { bankAccountNumber, cbeAccount: bankAccountNumber }),
         ...(accountHolderName !== undefined && { accountHolderName, name: accountHolderName }),
         ...(landlordPhone !== undefined && { landlordPhone }),
+        ...(smsTemplate !== undefined && { smsTemplate }),
         ...(preferredAlertTime !== undefined && { preferredAlertTime }),
         ...(autoSmsEnabled !== undefined && { autoSmsEnabled })
       }
@@ -60,6 +65,7 @@ export async function PUT(req: NextRequest) {
       bankAccountNumber: updatedUser.bankAccountNumber || updatedUser.cbeAccount || '',
       accountHolderName: updatedUser.accountHolderName || updatedUser.name || '',
       landlordPhone: updatedUser.landlordPhone || updatedUser.phone || '',
+      smsTemplate: updatedUser.smsTemplate || DEFAULT_SMS_TEMPLATE,
       preferredAlertTime: updatedUser.preferredAlertTime || '09:00',
       autoSmsEnabled: updatedUser.autoSmsEnabled ?? true
     });

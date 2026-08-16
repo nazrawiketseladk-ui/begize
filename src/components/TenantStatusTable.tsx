@@ -2,54 +2,27 @@
 
 import React from 'react';
 import { Room } from '../types';
-import { Calendar, MessageSquare, Check, Search, Plus, Home } from 'lucide-react';
+import { Calendar, MessageSquare, Search, Plus, Home, Edit3, Trash2 } from 'lucide-react';
 
 interface TenantStatusTableProps {
   rooms: Room[];
-  onToggleStatus: (roomId: string) => void;
   onEditRoom: (room: Room) => void;
+  onDeleteRoom?: (roomId: string) => void;
   onOpenSMSModal: (room: Room) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  statusFilter: 'all' | 'paid' | 'due-soon' | 'overdue';
-  onFilterChange: (f: 'all' | 'paid' | 'due-soon' | 'overdue') => void;
   onOpenAddModal?: () => void;
 }
 
 export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
   rooms,
-  onToggleStatus,
   onEditRoom,
+  onDeleteRoom,
   onOpenSMSModal,
   searchQuery,
   onSearchChange,
-  statusFilter,
-  onFilterChange,
   onOpenAddModal,
 }) => {
-  const getBadgeStyle = (status: Room['status']) => {
-    switch (status) {
-      case 'paid':
-        return {
-          bg: 'bg-[#E6F5EE] dark:bg-emerald-500/20 text-[#0D7B50] dark:text-emerald-300 border-[#0D7B50]/20 dark:border-emerald-500/30',
-          dot: 'bg-[#0D7B50] dark:bg-emerald-400',
-          label: 'Paid'
-        };
-      case 'due-soon':
-        return {
-          bg: 'bg-amber-50 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-500/30',
-          dot: 'bg-amber-500 dark:bg-amber-400',
-          label: 'Due Soon'
-        };
-      case 'overdue':
-        return {
-          bg: 'bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30 animate-pulse',
-          dot: 'bg-red-600 dark:bg-red-500',
-          label: 'Overdue'
-        };
-    }
-  };
-
   return (
     <div className="w-full rounded-[24px] bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 p-4 sm:p-6 overflow-hidden min-w-0 box-border transition-all">
       
@@ -57,43 +30,23 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 w-full">
         <div>
           <span className="text-[11px] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider block">
-            Rental Roster & Payment Status
+            Tenant Roster & Scheduled Reminders
           </span>
-          <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white mt-0.5">Tenant Rent Status Table</h3>
+          <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white mt-0.5">Monthly Reminder Schedule Table</h3>
         </div>
 
-        {/* Controls: Search & Status Filters */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
-          
-          {/* Search Input */}
-          <div className="relative w-full sm:w-auto flex-1 max-w-md">
+        {/* Controls: Search Input */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="relative w-full sm:w-72">
             <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-9 pr-3.5 py-2 rounded-full bg-zinc-100 dark:bg-slate-950/40 border border-black/5 dark:border-white/10 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Filter by tenant or room..."
+              placeholder="Search by tenant name, room, or phone..."
             />
           </div>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-full bg-zinc-100 dark:bg-slate-950/40 border border-black/5 dark:border-white/10 text-[11px] font-bold w-full sm:w-auto">
-            {(['all', 'paid', 'due-soon', 'overdue'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => onFilterChange(f)}
-                className={`px-3 py-1 rounded-full transition-all capitalize whitespace-nowrap ${
-                  statusFilter === f
-                    ? 'bg-[#0D7B50] dark:bg-emerald-500 text-white dark:text-slate-950 shadow-sm'
-                    : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
-              >
-                {f === 'all' ? 'All' : f === 'due-soon' ? 'Due Soon' : f}
-              </button>
-            ))}
-          </div>
-
         </div>
       </div>
 
@@ -105,15 +58,13 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
               <tr className="text-zinc-500 dark:text-slate-400 border-b border-black/5 dark:border-white/10 font-bold uppercase text-[10px] tracking-wider bg-zinc-50/50 dark:bg-white/[0.02]">
                 <th className="px-4 py-3 text-xs whitespace-nowrap w-24">Room #</th>
                 <th className="px-4 py-3 text-xs whitespace-nowrap min-w-[160px]">Tenant Name & Phone</th>
-                <th className="px-4 py-3 text-xs whitespace-nowrap w-36">Due Date</th>
-                <th className="px-4 py-3 text-xs whitespace-nowrap w-36">Status</th>
+                <th className="px-4 py-3 text-xs whitespace-nowrap w-44">Monthly Reminder Day</th>
                 <th className="px-4 py-3 text-xs text-right whitespace-nowrap w-36">Monthly Rent</th>
-                <th className="px-4 py-3 text-xs text-center whitespace-nowrap w-40">Quick Actions</th>
+                <th className="px-4 py-3 text-xs text-center whitespace-nowrap w-44">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
               {rooms.map((room) => {
-                const badge = getBadgeStyle(room.status);
                 return (
                   <tr key={room.id} className="hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors group">
                     
@@ -144,20 +95,12 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Due Date */}
+                    {/* Monthly Reminder Day */}
                     <td className="px-4 py-3 text-sm whitespace-nowrap font-semibold text-zinc-700 dark:text-slate-300">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-zinc-400 dark:text-slate-500" />
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 text-[#0D7B50] dark:text-emerald-300 text-xs font-extrabold">
+                        <Calendar className="w-3.5 h-3.5" />
                         <span>Day {room.dueDay} of month</span>
                       </div>
-                    </td>
-
-                    {/* Glowing Status Badge */}
-                    <td className="px-4 py-3 text-sm whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${badge.bg}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                        <span>{badge.label}</span>
-                      </span>
                     </td>
 
                     {/* Rent Amount */}
@@ -165,33 +108,44 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
                       {room.rentAmount.toLocaleString()} <span className="text-xs font-bold text-[#0D7B50] dark:text-emerald-400">ETB</span>
                     </td>
 
-                    {/* Quick Actions */}
+                    {/* Actions: Edit, Preview Template, Delete */}
                     <td className="px-4 py-3 text-sm text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         
-                        {/* Toggle Paid */}
+                        {/* Edit Button */}
                         <button
-                          onClick={() => onToggleStatus(room.id)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1 whitespace-nowrap ${
-                            room.status === 'paid'
-                              ? 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-slate-400 border-black/5 dark:border-white/10 hover:text-zinc-900 dark:hover:text-white'
-                              : 'bg-[#0D7B50] dark:bg-emerald-500 text-white dark:text-slate-950 font-extrabold border-[#0D7B50] dark:border-emerald-400 shadow-sm'
-                          }`}
-                          title={room.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}
+                          onClick={() => onEditRoom(room)}
+                          className="px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-slate-300 hover:bg-zinc-200 dark:hover:bg-white/20 transition-all font-bold text-xs flex items-center gap-1"
+                          title="Edit Tenant Details"
                         >
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>{room.status === 'paid' ? 'Paid' : 'Mark Paid'}</span>
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
                         </button>
 
-                        {/* Send SMS */}
+                        {/* Preview SMS Template */}
                         <button
                           onClick={() => onOpenSMSModal(room)}
-                          className="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-all font-bold flex items-center gap-1 whitespace-nowrap"
-                          title="Send SMS Reminder"
+                          className="px-2.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-all font-bold text-xs flex items-center gap-1"
+                          title="Preview SMS Template"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
-                          <span>SMS</span>
+                          <span>Template</span>
                         </button>
+
+                        {/* Delete Button */}
+                        {onDeleteRoom && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove tenant ${room.tenantName} (Room ${room.roomNumber})?`)) {
+                                onDeleteRoom(room.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all"
+                            title="Delete Tenant"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                       </div>
                     </td>
@@ -208,9 +162,9 @@ export const TenantStatusTable: React.FC<TenantStatusTableProps> = ({
               <Home className="w-7 h-7" />
             </div>
             <div>
-              <h4 className="font-extrabold text-zinc-900 dark:text-white text-base">No Tenant Rooms Found</h4>
+              <h4 className="font-extrabold text-zinc-900 dark:text-white text-base">No Tenant Rooms Added Yet</h4>
               <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1 max-w-sm">
-                Get started by adding your first tenant room or clear active search filters.
+                Get started by adding your first tenant room for automated monthly due day SMS reminders.
               </p>
             </div>
             {onOpenAddModal && (

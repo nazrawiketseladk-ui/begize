@@ -50,19 +50,24 @@ async function handleCronProcess(req: NextRequest, body: any) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const overrideDay = searchParams.get('day') || body?.overrideDay;
-    const now = new Date();
-    const currentDay = overrideDay ? Number(overrideDay) : now.getDate();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Calculate current day integer explicitly using Ethiopian Time (Africa/Addis_Ababa, UTC+3)
+    const eatDateString = new Date().toLocaleString("en-US", { timeZone: "Africa/Addis_Ababa" });
+    const currentDay = overrideDay ? Number(overrideDay) : new Date(eatDateString).getDate();
+    const timeString = new Date(eatDateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Start of today for duplicate check
-    const startOfToday = new Date();
+    const startOfToday = new Date(eatDateString);
     startOfToday.setHours(0, 0, 0, 0);
 
-    // Fetch ALL tenants across ALL registered landlords
+    // Query tenants matching today's day of the month
     const tenants = await prisma.tenant.findMany({
+      where: body?.forceAll ? {} : {
+        dueDay: currentDay,
+      },
       include: {
-        user: true
-      }
+        user: true,
+      },
     });
 
     let tenantSmsSent = 0;
@@ -76,8 +81,7 @@ async function handleCronProcess(req: NextRequest, body: any) {
       landlordEmail: string;
       roomNumber: string;
       dueDay: number;
-      status: string;
-      matchedRule: 'UPCOMING_3_DAYS' | 'DUE_TODAY' | 'OVERDUE' | 'PAID_NO_ACTION' | 'DISABLED_AUTO_SMS' | 'NONE';
+      matchedRule: 'DUE_DAY_MATCH' | 'DISABLED_AUTO_SMS';
       smsAttempted: boolean;
       apiResponse?: any;
     }> = [];
@@ -86,10 +90,9 @@ async function handleCronProcess(req: NextRequest, body: any) {
       const landlord = tenant.user;
       if (!landlord) continue;
 
-      const dueDay = tenant.dueDay;
       const amountStr = tenant.rentAmount.toLocaleString();
 
-      // Skip auto SMS if landlord has disabled it (unless manual test override)
+      // Skip auto SMS if landlord has disabled auto SMS (unless manual test override)
       if (!landlord.autoSmsEnabled && !body?.isManualTest) {
         evaluatedTenants.push({
           id: tenant.id,
@@ -98,252 +101,113 @@ async function handleCronProcess(req: NextRequest, body: any) {
           landlordEmail: landlord.email,
           roomNumber: tenant.roomNumber,
           dueDay: tenant.dueDay,
-          status: tenant.status,
           matchedRule: 'DISABLED_AUTO_SMS',
           smsAttempted: false
         });
         continue;
       }
 
-      if (tenant.status === 'paid') {
-        evaluatedTenants.push({
-          id: tenant.id,
-          tenantName: tenant.tenantName,
-          landlordName: landlord.name,
-          landlordEmail: landlord.email,
+      // Check if SMS was already dispatched today for this room
+      const existingLog = await prisma.sMSLog.findFirst({
+        where: {
+          userId: landlord.id,
           roomNumber: tenant.roomNumber,
-          dueDay: tenant.dueDay,
-          status: tenant.status,
-          matchedRule: 'PAID_NO_ACTION',
-          smsAttempted: false
-        });
-        continue;
-      }
+          type: 'DUE_DAY_REMINDER',
+          createdAt: { gte: startOfToday }
+        }
+      });
 
-      // Dynamically build landlord payment details string
-      const paymentMethods: string[] = [];
-      if (landlord.telebirrNumber) {
-        paymentMethods.push(`Telebirr: ${landlord.telebirrNumber}`);
-      }
-      const bankName = landlord.bankName || 'CBE';
-      const bankAcc = landlord.bankAccountNumber || landlord.cbeAccount;
-      const holder = landlord.accountHolderName || landlord.name;
-      if (bankAcc) {
-        paymentMethods.push(`${bankName}: ${bankAcc} (${holder})`);
-      }
+      let smsAttempted = false;
+      let apiResponse = null;
 
-      const paymentString = paymentMethods.length > 0
-        ? `\nክፍያ በ ${paymentMethods.join(' ወይም ')} መላክ ይችላሉ።`
-        : '';
+      if (!existingLog || body?.isManualTest) {
+        smsAttempted = true;
 
-      // Rule Evaluation
-      const isUpcoming3Days = (dueDay - currentDay === 3) || (dueDay - currentDay === -27);
-      const isDueToday = (dueDay === currentDay);
-      const isOverdue = (currentDay > dueDay);
+        // Construct dynamic payment details string
+        const paymentMethods: string[] = [];
+        if (landlord.telebirrNumber) {
+          paymentMethods.push(`Telebirr: ${landlord.telebirrNumber}`);
+        }
+        const bankName = landlord.bankName || 'CBE';
+        const bankAcc = landlord.bankAccountNumber || landlord.cbeAccount;
+        const holder = landlord.accountHolderName || landlord.name;
+        if (bankAcc) {
+          paymentMethods.push(`${bankName}: ${bankAcc}${holder ? ` (${holder})` : ''}`);
+        }
+        const paymentDetailsStr = paymentMethods.length > 0 ? paymentMethods.join(' / ') : 'እባክዎ አከራይዎን ያነጋግሩ';
 
-      // CASE A: 3 Days Before Due Date (Upcoming)
-      if (isUpcoming3Days) {
-        const existingLog = await prisma.sMSLog.findFirst({
-          where: {
+        // Custom template or default Amharic template
+        const rawTemplate = landlord.smsTemplate ||
+          'ሰላም {tenant_name}፣ የክፍል {room_number} የዚህ ወር ኪራይ {amount} ETB ዛሬ መከፈል አለበት። ክፍያ: {payment_details}። እናመሰግናለን!';
+
+        const tenantMsg = rawTemplate
+          .replace(/{tenant_name}/g, tenant.tenantName)
+          .replace(/{room_number}/g, tenant.roomNumber)
+          .replace(/{amount}/g, amountStr)
+          .replace(/{due_date}/g, `ቀን ${tenant.dueDay}`)
+          .replace(/{payment_details}/g, paymentDetailsStr);
+
+        apiResponse = await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
+
+        await prisma.sMSLog.create({
+          data: {
             userId: landlord.id,
+            recipientName: tenant.tenantName,
             roomNumber: tenant.roomNumber,
-            type: 'ADVANCE_NOTICE',
-            createdAt: { gte: startOfToday }
+            phone: tenant.phone,
+            message: tenantMsg,
+            status: apiResponse.success ? 'Delivered' : 'Failed',
+            type: 'DUE_DAY_REMINDER',
+            language: 'am',
+            sentAt: timeString
           }
         });
+        tenantSmsSent++;
+        logsCreated++;
 
-        let smsAttempted = false;
-        let apiResponse = null;
+        // Notify Landlord alert
+        const landlordTargetPhone = landlord.landlordPhone || landlord.phone;
+        if (landlordTargetPhone) {
+          const landlordMsg = `[BEGIZE REMINDER DISPATCHED] Room ${tenant.roomNumber} (${tenant.tenantName}) monthly rent reminder sent. Amount: ${amountStr} ETB.`;
 
-        if (!existingLog || body?.isManualTest) {
-          smsAttempted = true;
-          const tenantMsg = `Hello ${tenant.tenantName}, your monthly rent for Room ${tenant.roomNumber} (${amountStr} ETB) is due in 3 days (Day ${dueDay}).${paymentString}\nThank you!`;
-          
-          apiResponse = await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
+          await sendSMSEthiopiaGateway(landlordTargetPhone, landlordMsg);
 
           await prisma.sMSLog.create({
             data: {
               userId: landlord.id,
-              recipientName: tenant.tenantName,
+              recipientName: `Landlord (${landlord.name})`,
               roomNumber: tenant.roomNumber,
-              phone: tenant.phone,
-              message: tenantMsg,
-              status: apiResponse.success ? 'Delivered' : 'Failed',
-              type: 'ADVANCE_NOTICE',
+              phone: landlordTargetPhone,
+              message: landlordMsg,
+              status: 'Delivered',
+              type: 'DUE_DAY_REMINDER',
+              language: 'en',
               sentAt: timeString
             }
           });
-          tenantSmsSent++;
+          landlordAlertsSent++;
           logsCreated++;
         }
-
-        evaluatedTenants.push({
-          id: tenant.id,
-          tenantName: tenant.tenantName,
-          landlordName: landlord.name,
-          landlordEmail: landlord.email,
-          roomNumber: tenant.roomNumber,
-          dueDay: tenant.dueDay,
-          status: tenant.status,
-          matchedRule: 'UPCOMING_3_DAYS',
-          smsAttempted,
-          apiResponse
-        });
       }
 
-      // CASE B: ON Due Date (Due Today)
-      else if (isDueToday) {
-        const existingTenantLog = await prisma.sMSLog.findFirst({
-          where: {
-            userId: landlord.id,
-            roomNumber: tenant.roomNumber,
-            type: 'DUE_DATE_REMINDER',
-            createdAt: { gte: startOfToday }
-          }
-        });
-
-        let smsAttempted = false;
-        let apiResponse = null;
-
-        if (!existingTenantLog || body?.isManualTest) {
-          smsAttempted = true;
-          const tenantMsg = `Hello ${tenant.tenantName}, your monthly rent for Room ${tenant.roomNumber} (${amountStr} ETB) is due today (Day ${dueDay}).${paymentString}\nPlease complete your payment. Thank you!`;
-
-          apiResponse = await sendSMSEthiopiaGateway(tenant.phone, tenantMsg);
-
-          await prisma.sMSLog.create({
-            data: {
-              userId: landlord.id,
-              recipientName: tenant.tenantName,
-              roomNumber: tenant.roomNumber,
-              phone: tenant.phone,
-              message: tenantMsg,
-              status: apiResponse.success ? 'Delivered' : 'Failed',
-              type: 'DUE_DATE_REMINDER',
-              sentAt: timeString
-            }
-          });
-          tenantSmsSent++;
-          logsCreated++;
-
-          // Alert Landlord
-          const landlordTargetPhone = landlord.landlordPhone || landlord.phone;
-          if (landlordTargetPhone) {
-            const landlordMsg = `[NOTICE] Room ${tenant.roomNumber} (${tenant.tenantName}) rent is due today (Day ${dueDay}). Amount: ${amountStr} ETB.`;
-
-            await sendSMSEthiopiaGateway(landlordTargetPhone, landlordMsg);
-
-            await prisma.sMSLog.create({
-              data: {
-                userId: landlord.id,
-                recipientName: `Landlord (${landlord.name})`,
-                roomNumber: tenant.roomNumber,
-                phone: landlordTargetPhone,
-                message: landlordMsg,
-                status: 'Delivered',
-                type: 'DUE_DATE_REMINDER',
-                sentAt: timeString
-              }
-            });
-            landlordAlertsSent++;
-            logsCreated++;
-          }
-        }
-
-        evaluatedTenants.push({
-          id: tenant.id,
-          tenantName: tenant.tenantName,
-          landlordName: landlord.name,
-          landlordEmail: landlord.email,
-          roomNumber: tenant.roomNumber,
-          dueDay: tenant.dueDay,
-          status: tenant.status,
-          matchedRule: 'DUE_TODAY',
-          smsAttempted,
-          apiResponse
-        });
-      }
-
-      // CASE C: 1+ Days After Due Date (Overdue)
-      else if (isOverdue) {
-        // Update database status to overdue if not already set
-        if (tenant.status !== 'overdue') {
-          await prisma.tenant.update({
-            where: { id: tenant.id },
-            data: { status: 'overdue' }
-          });
-        }
-
-        const daysOverdue = currentDay - dueDay;
-
-        const existingOverdueLog = await prisma.sMSLog.findFirst({
-          where: {
-            userId: landlord.id,
-            roomNumber: tenant.roomNumber,
-            type: 'OVERDUE_ALERT',
-            createdAt: { gte: startOfToday }
-          }
-        });
-
-        let smsAttempted = false;
-        let apiResponse = null;
-
-        if (!existingOverdueLog || body?.isManualTest) {
-          smsAttempted = true;
-          const landlordTargetPhone = landlord.landlordPhone || landlord.phone;
-          if (landlordTargetPhone) {
-            const landlordMsg = `[ALERT] Room ${tenant.roomNumber} (${tenant.tenantName}) rent is ${daysOverdue} days overdue! (Due: Day ${dueDay}) Amount: ${amountStr} ETB.`;
-
-            apiResponse = await sendSMSEthiopiaGateway(landlordTargetPhone, landlordMsg);
-
-            await prisma.sMSLog.create({
-              data: {
-                userId: landlord.id,
-                recipientName: `Landlord (${landlord.name})`,
-                roomNumber: tenant.roomNumber,
-                phone: landlordTargetPhone,
-                message: landlordMsg,
-                status: apiResponse.success ? 'Delivered' : 'Failed',
-                type: 'OVERDUE_ALERT',
-                sentAt: timeString
-              }
-            });
-            landlordAlertsSent++;
-            logsCreated++;
-          }
-        }
-
-        evaluatedTenants.push({
-          id: tenant.id,
-          tenantName: tenant.tenantName,
-          landlordName: landlord.name,
-          landlordEmail: landlord.email,
-          roomNumber: tenant.roomNumber,
-          dueDay: tenant.dueDay,
-          status: 'overdue',
-          matchedRule: 'OVERDUE',
-          smsAttempted,
-          apiResponse
-        });
-      } else {
-        evaluatedTenants.push({
-          id: tenant.id,
-          tenantName: tenant.tenantName,
-          landlordName: landlord.name,
-          landlordEmail: landlord.email,
-          roomNumber: tenant.roomNumber,
-          dueDay: tenant.dueDay,
-          status: tenant.status,
-          matchedRule: 'NONE',
-          smsAttempted: false
-        });
-      }
+      evaluatedTenants.push({
+        id: tenant.id,
+        tenantName: tenant.tenantName,
+        landlordName: landlord.name,
+        landlordEmail: landlord.email,
+        roomNumber: tenant.roomNumber,
+        dueDay: tenant.dueDay,
+        matchedRule: 'DUE_DAY_MATCH',
+        smsAttempted,
+        apiResponse
+      });
     }
 
-    console.log(`[BEGIZE CRON] Automated daily check completed for Day ${currentDay}. Tenant SMS: ${tenantSmsSent}, Landlord Alerts: ${landlordAlertsSent}`);
+    console.log(`[BEGIZE CRON EAT] Monthly Due Day Reminder check completed for Day ${currentDay} (Africa/Addis_Ababa). Tenant SMS: ${tenantSmsSent}, Landlord Alerts: ${landlordAlertsSent}`);
 
     return NextResponse.json({
       success: true,
+      timeZone: 'Africa/Addis_Ababa',
       currentDay,
       processedTenantsCount: tenants.length,
       tenantSmsSent,
